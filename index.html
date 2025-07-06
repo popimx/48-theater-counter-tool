@@ -15,11 +15,13 @@
       max-width: 390px;
       margin-left: auto;
       margin-right: auto;
+      line-height: 1.5;
     }
 
-    header h1 {
-      font-size: 1.5rem;
+    header {
       text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
       margin-bottom: 1.5rem;
     }
 
@@ -45,29 +47,31 @@
 
     #output {
       background: #fff;
-      padding: 12px 14px;
+      padding: 1rem;
       border-radius: 6px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-      font-size: 0.95rem;
-      line-height: 1.4;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      white-space: normal;
+      margin-top: 1.5rem;
     }
 
     .highlight {
       font-weight: bold;
       color: #1976d2;
-      font-size: 1.1rem;
-      margin: 0.5rem 0;
+      font-size: 1.2rem;
+      margin-bottom: 0.75rem;
     }
 
     h3 {
-      font-size: 1rem;
-      margin: 1rem 0 0.5rem;
+      margin-top: 1.2rem;
+      margin-bottom: 0.5rem;
       font-weight: bold;
+      font-size: 1.1rem;
+      color: #1976d2;
     }
 
     ol, ul {
       margin-left: 1.2rem;
-      margin-bottom: 0.6rem;
+      margin-bottom: 1rem;
     }
 
     li {
@@ -76,29 +80,18 @@
 
     details summary {
       font-weight: bold;
-      font-size: 1rem;
       cursor: pointer;
-      padding: 4px 0;
+      padding: 0.3rem 0;
+      outline-offset: 2px;
     }
 
     details[open] summary {
       color: #1976d2;
     }
-
-    @media screen and (max-width: 430px) {
-      body {
-        padding: 16px;
-      }
-
-      #output {
-        font-size: 0.9rem;
-        padding: 10px 12px;
-      }
-    }
   </style>
 </head>
 <body>
-  <header><h1>劇場公演 出演回数ツール</h1></header>
+  <header>劇場公演 出演回数ツール</header>
 
   <label for="group-select">グループを選択：</label>
   <select id="group-select">
@@ -168,25 +161,42 @@
       const today = new Date();
       const pastPerformances = performances.filter(p => new Date(p.date) <= today);
       const futurePerformances = performances.filter(p => new Date(p.date) > today);
+
       const memberPast = pastPerformances.filter(p => p.members.includes(member));
       const totalCount = memberPast.length;
 
-      const history = memberPast
-        .slice()
-        .sort((a,b) => b.date.localeCompare(a.date))
-        .map((p, i) => `${i+1}回目 ${p.date} ${p.stage}${p.time ? '（' + p.time + '）' : ''}`);
+      // 節目達成日（100の倍数）
+      const milestones = memberPast.filter((_, i) => (i + 1) % 100 === 0);
+      const milestoneHistory = milestones.map((p, i) => `${(i + 1) * 100}回目：${p.date}「${p.stage}」`);
 
+      // 節目予測（90〜99回の時のみ）
       const countMod100 = totalCount % 100;
       let milestoneText = '';
       if (countMod100 >= 90 && totalCount > 0) {
         const milestone = Math.ceil(totalCount / 100) * 100;
         const remaining = milestone - totalCount;
         const milestonePerformance = futurePerformances.filter(p => p.members.includes(member))[remaining - 1];
-        milestoneText = milestonePerformance
-          ? `（${milestone}回目は ${milestonePerformance.date} の「${milestonePerformance.stage}」${milestonePerformance.time ? '（' + milestonePerformance.time + '）' : ''} 公演の予定）`
-          : `あと${remaining}回で${milestone}回の節目達成！`;
+        if (milestonePerformance) {
+          milestoneText = `（${milestone}回目は ${milestonePerformance.date} の「${milestonePerformance.stage}」${milestonePerformance.time ? '（' + milestonePerformance.time + '）' : ''} 公演の予定）`;
+        } else {
+          milestoneText = `あと${remaining}回で${milestone}回の節目達成！`;
+        }
       }
 
+      // 出演履歴
+      const history = memberPast.slice().sort((a, b) => b.date.localeCompare(a.date))
+        .map((p, i) => `${i + 1}回目 ${p.date} ${p.stage}${p.time ? '（' + p.time + '）' : ''}`);
+
+      // 演目別出演回数（個人）
+      const personalStageCounts = {};
+      memberPast.forEach(p => {
+        personalStageCounts[p.stage] = (personalStageCounts[p.stage] || 0) + 1;
+      });
+      const personalStageHtml = Object.entries(personalStageCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([stage, count]) => `<li>${stage}：${count}回</li>`).join('');
+
+      // 演目別ランキング（全メンバー）
       const stageCounts = {};
       pastPerformances.forEach(p => {
         if (!p.members.includes(member)) return;
@@ -195,13 +205,13 @@
           stageCounts[p.stage][m] = (stageCounts[p.stage][m] || 0) + 1;
         });
       });
-
       const stageHtml = Object.entries(stageCounts).map(([stage, counts]) => {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
         const listItems = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
         return `<details><summary>演目: ${stage}</summary><ol>${listItems}</ol></details>`;
       }).join('');
 
+      // 年別ランキング
       const yearCounts = {};
       pastPerformances.forEach(p => {
         if (!p.members.includes(member)) return;
@@ -211,13 +221,13 @@
           yearCounts[year][m] = (yearCounts[year][m] || 0) + 1;
         });
       });
-
       const yearHtml = Object.entries(yearCounts).map(([year, counts]) => {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
         const listItems = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
         return `<details><summary>${year}年ランキング</summary><ol>${listItems}</ol></details>`;
       }).join('');
 
+      // 共演回数
       const coCounts = {};
       memberPast.forEach(p => {
         p.members.forEach(m => {
@@ -225,29 +235,18 @@
           coCounts[m] = (coCounts[m] || 0) + 1;
         });
       });
-
       const coList = Object.entries(coCounts).sort((a, b) => b[1] - a[1]);
       const coHtml = `<ol>${coList.map(([m, c]) => `<li>${m}（${c}回）</li>`).join('')}</ol>`;
 
       output.innerHTML = `
         <div class="highlight">総出演回数: ${totalCount}回</div>
-        ${milestoneText ? `<div>${milestoneText}</div>` : ''}
-        <div>
-          <h3>出演履歴（最新順）</h3>
-          <ul>${history.map(h => `<li>${h}</li>`).join('')}</ul>
-        </div>
-        <div>
-          <h3>演目別出演回数ランキング</h3>
-          ${stageHtml || '<p>データなし</p>'}
-        </div>
-        <div>
-          <h3>年別出演回数ランキング</h3>
-          ${yearHtml || '<p>データなし</p>'}
-        </div>
-        <div>
-          <h3>共演回数ランキング</h3>
-          ${coHtml || '<p>データなし</p>'}
-        </div>
+        ${milestoneHistory.length ? `<div><h3>節目達成日</h3><ul>${milestoneHistory.map(d => `<li>${d}</li>`).join('')}</ul></div>` : ''}
+        ${milestoneText ? `<div><h3>節目予測</h3>${milestoneText}</div>` : ''}
+        <div><h3>出演履歴（最新順）</h3><ul>${history.map(h => `<li>${h}</li>`).join('')}</ul></div>
+        <div><h3>演目別出演回数</h3><ul>${personalStageHtml}</ul></div>
+        <div><h3>演目別出演回数ランキング</h3>${stageHtml}</div>
+        <div><h3>年別出演回数ランキング</h3>${yearHtml}</div>
+        <div><h3>共演回数ランキング</h3>${coHtml}</div>
       `;
     }
 
