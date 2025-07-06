@@ -37,6 +37,7 @@
       padding: 1rem;
       border-radius: 6px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      white-space: pre-wrap;
     }
 
     .highlight {
@@ -85,9 +86,9 @@
   <div id="output"></div>
 
   <script>
-    // 外部ファイルパス
-    const GROUPS_URL = './src/data/groups.js';
-    const PERFORMANCE_URL = './src/data/performance.js';
+    // JSONファイルのパス（groups.json, performance.jsonを用意してください）
+    const GROUPS_URL = './src/data/groups.json';
+    const PERFORMANCE_URL = './src/data/performance.json';
 
     let groups = {};
     let performances = [];
@@ -96,42 +97,21 @@
     const memberSelect = document.getElementById('member-select');
     const output = document.getElementById('output');
 
-    // groups.js を読み込む関数
+    // groups.jsonをfetchして読み込み
     async function fetchGroups() {
       const res = await fetch(GROUPS_URL);
-      if (!res.ok) throw new Error('groups.jsの取得に失敗しました');
-      const text = await res.text();
-
-      const match = text.match(/const\s+groups\s*=\s*(\{[\s\S]*\});/);
-      if (!match) throw new Error('groups.jsの形式が不正です');
-
-      let jsonStr = match[1]
-        .replace(/\/\*[\s\S]*?\*\//g, '') // コメント削除
-        .replace(/\/\/.*$/gm, '')        // 行末コメント削除
-        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // キーにクォート
-        .replace(/'/g, '"');             // シングル→ダブルクォート
-
-      groups = JSON.parse(jsonStr);
+      if (!res.ok) throw new Error('groups.jsonの取得に失敗しました');
+      groups = await res.json();
     }
 
-    // performance.js を読み込む関数
+    // performance.jsonをfetchして読み込み
     async function fetchPerformances() {
       const res = await fetch(PERFORMANCE_URL);
-      if (!res.ok) throw new Error('performance.jsの取得に失敗しました');
-      const text = await res.text();
-
-      const match = text.match(/const\s+performances\s*=\s*(\[[\s\S]*?\]);/);
-      if (!match) throw new Error('performance.jsの形式が不正です');
-
-      let jsonStr = match[1]
-        .replace(/\/\*[\s\S]*?\*\//g, '') // コメント削除
-        .replace(/\/\/.*$/gm, '')        // 行末コメント削除
-        .replace(/'/g, '"');             // シングル→ダブルクォート
-
-      performances = JSON.parse(jsonStr);
+      if (!res.ok) throw new Error('performance.jsonの取得に失敗しました');
+      performances = await res.json();
     }
 
-    // グループ選択肢をセットアップ
+    // グループ選択肢セットアップ
     function setupGroupOptions() {
       Object.keys(groups).forEach(group => {
         const opt = document.createElement('option');
@@ -141,7 +121,7 @@
       });
     }
 
-    // グループ変更時の処理
+    // グループ変更時：メンバー選択肢更新
     function onGroupChange() {
       const selectedGroup = groupSelect.value;
       memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
@@ -158,7 +138,7 @@
       });
     }
 
-    // メンバー選択時の処理（出演履歴と統計を表示）
+    // メンバー選択時：出演回数などを表示
     function onMemberChange() {
       const member = memberSelect.value;
       output.innerHTML = '';
@@ -166,22 +146,21 @@
 
       const today = new Date();
 
-      // 過去・未来の公演に分ける
+      // 過去の公演のみ抽出（未来の公演は節目予想に利用）
       const pastPerformances = performances.filter(p => new Date(p.date) <= today);
       const futurePerformances = performances.filter(p => new Date(p.date) > today);
 
-      // 対象メンバーの過去公演だけ取得
+      // 対象メンバー出演の過去公演
       const memberPast = pastPerformances.filter(p => p.members.includes(member));
       const totalCount = memberPast.length;
 
-      // 出演履歴（最新順）
+      // 出演履歴を降順（最新→古い）
       const history = memberPast
-        .map((p, i) => {
-          return `${totalCount - i}回目 ${p.date} ${p.stage}${p.time ? '（' + p.time + '）' : ''}`;
-        })
-        .reverse();
+        .slice()  // 複製
+        .sort((a,b) => b.date.localeCompare(a.date))
+        .map((p, i) => `${i+1}回目 ${p.date} ${p.stage}${p.time ? '（' + p.time + '）' : ''}`);
 
-      // 節目（下2桁が90〜99）の時だけ通知
+      // 節目（100回単位の手前90〜99回の時）を判定
       const countMod100 = totalCount % 100;
       let milestoneText = '';
       if (countMod100 >= 90 && totalCount > 0) {
@@ -189,7 +168,6 @@
         const remaining = milestone - totalCount;
 
         const milestonePerformance = futurePerformances.filter(p => p.members.includes(member))[remaining - 1];
-
         if (milestonePerformance) {
           milestoneText = `（${milestone}回目は ${milestonePerformance.date} の「${milestonePerformance.stage}」${milestonePerformance.time ? '（' + milestonePerformance.time + '）' : ''} 公演の予定）`;
         } else {
@@ -197,7 +175,7 @@
         }
       }
 
-      // 演目別ランキング
+      // 演目別ランキング（過去公演の全メンバー回数）
       const stageCounts = {};
       pastPerformances.forEach(p => {
         if (!p.members.includes(member)) return;
@@ -206,14 +184,13 @@
           stageCounts[p.stage][m] = (stageCounts[p.stage][m] || 0) + 1;
         });
       });
-
       const stageHtml = Object.entries(stageCounts).map(([stage, counts]) => {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
         const listItems = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
         return `<details><summary>演目: ${stage}</summary><ol>${listItems}</ol></details>`;
       }).join('');
 
-      // 年別出演回数
+      // 年別ランキング
       const yearCounts = {};
       pastPerformances.forEach(p => {
         if (!p.members.includes(member)) return;
@@ -223,14 +200,13 @@
           yearCounts[year][m] = (yearCounts[year][m] || 0) + 1;
         });
       });
-
       const yearHtml = Object.entries(yearCounts).map(([year, counts]) => {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
         const listItems = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
         return `<details><summary>${year}年ランキング</summary><ol>${listItems}</ol></details>`;
       }).join('');
 
-      // 共演回数
+      // 共演回数ランキング
       const coCounts = {};
       memberPast.forEach(p => {
         p.members.forEach(m => {
@@ -238,11 +214,10 @@
           coCounts[m] = (coCounts[m] || 0) + 1;
         });
       });
-
       const coList = Object.entries(coCounts).sort((a, b) => b[1] - a[1]);
       const coHtml = `<ol>${coList.map(([m, c]) => `<li>${m}（${c}回）</li>`).join('')}</ol>`;
 
-      // 出力描画
+      // 表示更新
       output.innerHTML = `
         <div class="highlight">総出演回数: ${totalCount}回</div>
         ${milestoneText ? `<div>節目まであと${100 - countMod100}回！<br>${milestoneText}</div>` : ''}
@@ -265,7 +240,7 @@
       `;
     }
 
-    // 初期化処理（ページ読み込み後）
+    // 初期化関数：JSON読み込み→グループセット→イベント設定
     async function init() {
       try {
         await fetchGroups();
@@ -280,7 +255,6 @@
       }
     }
 
-    // DOM読み込み完了時に初期化実行
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
