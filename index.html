@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>劇場公演 出演回数ツール</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    /* 全体のスタイル */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 375px;
+      margin: 0 auto;
+      padding: 1rem;
+      background: #f9f9f9;
+      color: #333;
+    }
+
+    header {
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+
+    select {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    #output {
+      margin-top: 1.5rem;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      font-size: 0.95rem;
+    }
+
+    h3 {
+      font-size: 1.2rem;
+      margin-top: 1.2rem;
+      border-bottom: 2px solid #1976d2;
+      padding-bottom: 0.3rem;
+    }
+
+    ol, ul {
+      margin: 0.5rem 0 1rem 1.2rem;
+      padding-left: 1rem;
+    }
+
+    li {
+      margin-bottom: 0.3rem;
+    }
+
+    .highlight {
+      font-weight: bold;
+      color: #1976d2;
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <header>劇場公演 出演回数ツール</header>
+
+  <label for="group-select">グループを選択：</label>
+  <select id="group-select"><option value="">グループを選択</option></select>
+
+  <label for="member-select">メンバーを選択：</label>
+  <select id="member-select" disabled><option value="">先にグループを選択してください</option></select>
+
+  <div id="output"></div>
+
+  <script>
+    // --- グローバル変数 ---
+    let groupsData = null;        // groups.js のデータ格納用
+    let performancesData = null;  // performance.js のデータ格納用
+
+    // --- HTML要素取得 ---
+    const groupSelect = document.getElementById("group-select");
+    const memberSelect = document.getElementById("member-select");
+    const output = document.getElementById("output");
+
+    // --- groups.js と performance.js をfetchで読み込む ---
+    async function loadData() {
+      try {
+        // groups.jsはESモジュール形式でエクスポートされている想定
+        // ここでは単純JSON読み込み用にfetch → text → evalで処理する例（安全に応じて改善してください）
+        const groupsRes = await fetch('data/groups.js');
+        const groupsText = await groupsRes.text();
+        // groups.jsは
+        // export const groups = { ... };
+        // という形式の想定なのでevalで groups オブジェクトを抽出
+        eval(groupsText); // groups変数が定義される想定
+        groupsData = groups;
+
+        const perfRes = await fetch('data/performance.js');
+        const perfText = await perfRes.text();
+        // performance.jsは
+        // export const performances = [ ... ];
+        // という形式の想定なのでevalで performances 配列を抽出
+        eval(perfText); // performances変数が定義される想定
+        performancesData = performances;
+
+        initGroupSelect();
+      } catch (e) {
+        output.innerHTML = `<p style="color:red;">データの読み込みに失敗しました。${e}</p>`;
+      }
+    }
+
+    // --- グループ選択肢を初期化 ---
+    function initGroupSelect() {
+      groupSelect.innerHTML = `<option value="">グループを選択</option>`;
+      Object.keys(groupsData).forEach(group => {
+        const opt = document.createElement("option");
+        opt.value = group;
+        opt.textContent = group;
+        groupSelect.appendChild(opt);
+      });
+      // メンバー選択を無効化して初期化
+      memberSelect.innerHTML = `<option value="">先にグループを選択してください</option>`;
+      memberSelect.disabled = true;
+      output.innerHTML = "";
+    }
+
+    // --- メンバー選択肢をグループ変更時に更新 ---
+    groupSelect.addEventListener("change", () => {
+      const selectedGroup = groupSelect.value;
+      memberSelect.innerHTML = "";
+      output.innerHTML = "";
+      if (!selectedGroup) {
+        memberSelect.innerHTML = `<option value="">先にグループを選択してください</option>`;
+        memberSelect.disabled = true;
+        return;
+      }
+      groupsData[selectedGroup].forEach(member => {
+        const opt = document.createElement("option");
+        opt.value = member;
+        opt.textContent = member;
+        memberSelect.appendChild(opt);
+      });
+      memberSelect.disabled = false;
+    });
+
+    // --- メンバー選択時に出演回数などを計算して表示 ---
+    memberSelect.addEventListener("change", () => {
+      const member = memberSelect.value;
+      if (!member) {
+        output.innerHTML = "";
+        return;
+      }
+      showMemberStats(member);
+    });
+
+    // --- 出演回数・ランキング等を計算して表示 ---
+    function showMemberStats(member) {
+      const today = new Date();
+
+      // 過去公演のみ抽出（今日以前の公演）
+      const pastPerformances = performancesData.filter(p => new Date(p.date) <= today);
+
+      // 未来公演
+      const futurePerformances = performancesData.filter(p => new Date(p.date) > today);
+
+      // 指定メンバーが出演した過去公演のみ抽出
+      const memberPastPerformances = pastPerformances.filter(p => p.members.includes(member));
+
+      // 総出演回数
+      const total = memberPastPerformances.length;
+
+      // --- 出演履歴（最新順）---
+      // 出演回数順に並べ、回数は最新公演が1回目ではなく、総数からカウントダウン表記にしている
+      // 例: 総出演回数100回の場合、最新出演は100回目として表示
+      const historyLines = memberPastPerformances
+        .map((p, i) => {
+          const countNum = total - i; // 例: 100回中、最新が100回目
+          const timePart = p.time ? `（${p.time}）` : "";
+          return `${countNum}回 ${p.date} ${p.stage}${timePart}`;
+        });
+
+      // --- 節目表示（出演回数下2桁が90〜99回のときのみ表示） ---
+      const lastTwoDigits = total % 100;
+      let milestoneText = "";
+      if (lastTwoDigits >= 90 && total > 0) {
+        const nextMilestone = Math.ceil(total / 100) * 100;
+        const remaining = nextMilestone - total;
+
+        // 未来公演の中で、メンバーが出演している公演を抽出
+        const memberFuture = futurePerformances.filter(p => p.members.includes(member));
+        // 節目達成の公演が未来公演予定で確定しているかチェック
+        if (memberFuture.length >= remaining) {
+          const target = memberFuture[remaining - 1]; // 残り何回目かの公演
+          const timePart = target.time ? `（${target.time}）` : "";
+          milestoneText = `（${nextMilestone}回目は${target.date}の「${target.stage}」${timePart}公演の予定）`;
+        } else {
+          milestoneText = `（${nextMilestone}回目まであと${remaining}回）`;
+        }
+      }
+
+      // --- 演目別出演回数ランキング ---
+      // 過去公演で該当メンバーが出演した演目ごとに、出演メンバーの回数集計
+      const stageCounts = {};
+      pastPerformances.forEach(p => {
+        if (!p.members.includes(member)) return;
+        if (!stageCounts[p.stage]) stageCounts[p.stage] = {};
+        p.members.forEach(m => {
+          stageCounts[p.stage][m] = (stageCounts[p.stage][m] || 0) + 1;
+        });
+      });
+
+      // --- 年別出演回数ランキング ---
+      // 過去公演の年ごとに該当メンバーが出演した公演の出演者回数集計
+      const yearCounts = {};
+      pastPerformances.forEach(p => {
+        if (!p.members.includes(member)) return;
+        const year = p.date.slice(0, 4);
+        if (!yearCounts[year]) yearCounts[year] = {};
+        p.members.forEach(m => {
+          yearCounts[year][m] = (yearCounts[year][m] || 0) + 1;
+        });
+      });
+
+      // --- 共演回数ランキング ---
+      // 該当メンバーが出演した過去公演の共演者ごとの共演回数を集計
+      const coCounts = {};
+      memberPastPerformances.forEach(p => {
+        p.members.forEach(m => {
+          if (m === member) return;
+          coCounts[m] = (coCounts[m] || 0) + 1;
+        });
+      });
+
+      // --- HTML生成 ---
+
+      // 演目別ランキングHTML
+      const stageHtml = Object.entries(stageCounts).map(([stage, counts]) => {
+        const list = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        return `
+          <div>
+            <strong>演目: ${stage}</strong>
+            <ol>
+              ${list.map(([m, c]) => `<li>${m} (${c}回)</li>`).join("")}
+            </ol>
+          </div>`;
+      }).join("");
+
+      // 年別ランキングHTML
+      const yearHtml = Object.entries(yearCounts).map(([year, counts]) => {
+        const list = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        return `
+          <div>
+            <strong>${year}年ランキング</strong>
+            <ol>
+              ${list.map(([m, c]) => `<li>${m} (${c}回)</li>`).join("")}
+            </ol>
+          </div>`;
+      }).join("");
+
+      // 共演回数ランキングHTML
+      const coList = Object.entries(coCounts).sort((a, b) => b[1] - a[1]);
+      const coHtml = `
+        <ol>
+          ${coList.map(([m, c]) => `<li>${m}（${c}回）</li>`).join("")}
+        </ol>`;
+
+      // 出力HTMLセット
+      output.innerHTML = `
+        <div class="highlight">出演回数：${total}回</div>
+        ${lastTwoDigits >= 90 && milestoneText ? `<div>あと${100 - lastTwoDigits}回で節目達成！<br>${milestoneText}</div>` : ""}
+        <h3>出演履歴（最新順）</h3>
+        <ul>${historyLines.map(line => `<li>${line}</li>`).join("")}</ul>
+        <h3>演目別出演回数ランキング</h3>
+        ${stageHtml}
+        <h3>年別出演回数ランキング</h3>
+        ${yearHtml}
+        <h3>共演回数ランキング</h3>
+        ${coHtml}
+      `;
+    }
+
+    // ページロード時にデータ読み込み
+    loadData();
+  </script>
+</body>
+</html>
