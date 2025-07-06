@@ -1,6 +1,14 @@
-// src/data/performance.js
-// 劇場公演の出演データを管理するファイル
-// 公演日時、演目名、時間帯、出演メンバーを配列形式で記述
+/* 
+  src/data/performance.js
+  劇場公演出演回数ツール用：各公演の出演記録データ
+
+  ・日付（YYYY-MM-DD形式）
+  ・演目名（stage）
+  ・時間帯（昼／夜など）※空文字可
+  ・出演メンバー（members）… 配列で複数人を列挙
+
+  このファイルは fetch で取得 → 正規表現で performances 配列のみ抽出 → JSON.parse で処理します
+*/
 
 const performances = [
   {
@@ -71,3 +79,7 @@ const performances = [
     ]
   }
 ];
+
+/* 
+  このファイルは export しません。純JSとして読み込み、fetch＋正規表現で扱います。
+*/
