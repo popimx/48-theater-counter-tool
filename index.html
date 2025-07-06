@@ -9,9 +9,12 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
         Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
       margin: 0;
-      padding: 12px;
+      padding: 20px;
       background-color: #f9f9f9;
       color: #222;
+      max-width: 390px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     header h1 {
@@ -38,6 +41,59 @@
       border: 1px solid #ccc;
       box-sizing: border-box;
       background-color: white;
+    }
+
+    textarea {
+      width: 100%;
+      max-width: 100%;
+      font-size: 1rem;
+      padding: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      margin-bottom: 12px;
+      height: 180px;
+      box-sizing: border-box;
+      resize: vertical;
+    }
+
+    @media screen and (max-width: 430px) {
+      textarea {
+        font-size: 1rem;
+        height: 100px;
+      }
+    }
+
+    button#assign-btn {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      font-size: 1.2rem;
+      background-color: #007aff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button#assign-btn:hover {
+      background-color: #005bb5;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    thead {
+      background-color: #f2f2f2;
     }
 
     #output {
@@ -236,7 +292,7 @@
         yearRanking[year] = sortRankingWithTies(arr);
       });
 
-      // 共演回数
+      // 共演回数（共演回数が0のメンバーは表示しない）
       const coCounts = {};
       memberPast.forEach(p => {
         p.members.forEach(m => {
@@ -244,7 +300,8 @@
           coCounts[m] = (coCounts[m] || 0) + 1;
         });
       });
-      const coRanking = sortRankingWithTies(Object.entries(coCounts).map(([m, c]) => ({ name: m, count: c })));
+      const filteredCoCounts = Object.entries(coCounts).filter(([, c]) => c > 0);
+      const coRanking = sortRankingWithTies(filteredCoCounts.map(([m, c]) => ({ name: m, count: c })));
 
       // 出力HTML
       let html = `
@@ -257,14 +314,14 @@
         </div>
         <div>
           <h3>演目別出演回数</h3>
-          <ul>${Array.from(stageSet).map(stage => `<li>${stage}：${stageCounts[stage]}回</li>`).join('')}</ul>
+          <ul>${Array.from(stageSet).sort((a,b) => stageCounts[b] - stageCounts[a]).map(stage => `<li>${stage}：${stageCounts[stage]}回</li>`).join('')}</ul>
         </div>
         <div>
           <h3>演目別出演回数ランキング</h3>
           ${Array.from(stageSet).map(stage => `
             <details>
               <summary>${stage}</summary>
-              <ol>${stageRanking[stage].map(item => `<li>${item.rank}. ${item.name}（${item.count}回）</li>`).join('')}</ol>
+              <ol>${stageRanking[stage].map(item => `<li>${item.rank}. ${item.name} ${item.count}回</li>`).join('')}</ol>
             </details>
           `).join('')}
         </div>
@@ -273,13 +330,13 @@
           ${Array.from(years).sort().map(year => `
             <details>
               <summary>${year}年ランキング</summary>
-              <ol>${yearRanking[year].map(item => `<li>${item.rank}. ${item.name}（${item.count}回）</li>`).join('')}</ol>
+              <ol>${yearRanking[year].map(item => `<li>${item.rank}. ${item.name} ${item.count}回</li>`).join('')}</ol>
             </details>
           `).join('')}
         </div>
         <div>
           <h3>共演回数ランキング</h3>
-          <ol>${coRanking.map(item => `<li>${item.rank}. ${item.name}（${item.count}回）</li>`).join('')}</ol>
+          <ol>${coRanking.map(item => `<li>${item.rank}. ${item.name} ${item.count}回</li>`).join('')}</ol>
         </div>
       `;
 
