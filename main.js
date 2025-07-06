@@ -1,4 +1,4 @@
- const GROUPS_URL = './src/data/groups.json';
+const GROUPS_URL = './src/data/groups.json';
 const PERFORMANCE_URL = './src/data/performance.json';
 
 let groups = {};
