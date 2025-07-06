@@ -242,7 +242,7 @@
         <div class="highlight">総出演回数: ${totalCount}回</div>
         ${milestoneHistory.length ? `<div><h3>節目達成日</h3><ul>${milestoneHistory.map(d => `<li>${d}</li>`).join('')}</ul></div>` : ''}
         ${milestoneText ? `<div><h3>節目予測</h3>${milestoneText}</div>` : ''}
-        <div><h3>出演履歴（最新順）</h3><ul>${history.map(h => `<li>${h}</li>`).join('')}</ul></div>
+        <div><h3>出演履歴</h3><ul>${history.map(h => `<li>${h}</li>`).join('')}</ul></div>
         <div><h3>演目別出演回数</h3><ul>${personalStageHtml}</ul></div>
         <div><h3>演目別出演回数ランキング</h3>${stageHtml}</div>
         <div><h3>年別出演回数ランキング</h3>${yearHtml}</div>
