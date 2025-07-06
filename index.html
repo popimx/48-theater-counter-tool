@@ -60,10 +60,10 @@
     }
 
     h3 {
-      margin-top: 1.5rem;
+      margin-top: 1.2rem;
       margin-bottom: 0.4rem;
       font-weight: bold;
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       color: #333;
     }
 
@@ -91,19 +91,30 @@
 <body>
   <header><h1>劇場公演 出演回数ツール</h1></header>
 
+  <!-- グループ選択 -->
   <label for="group-select">グループを選択：</label>
   <select id="group-select">
     <option value="">-- グループを選択 --</option>
   </select>
 
+  <!-- メンバー選択 -->
   <label for="member-select">メンバーを選択：</label>
   <select id="member-select" disabled>
     <option value="">-- メンバーを選択 --</option>
   </select>
 
+  <!-- 出力エリア -->
   <div id="output"></div>
 
-  <!-- メイン処理を外部ファイル化、キャッシュ対策付き -->
-  <script src="main.js?v=20250707"></script>
+  <!-- メインスクリプト読み込み（キャッシュ対策付き） -->
+  <script src="main.js?t=<?=Date.now()?>"></script>
+  <script>
+    // Fallback（GitHub Pages では PHP不可のため JSで代替）
+    const script = document.querySelector('script[src*="main.js"]');
+    if (script) {
+      const now = Date.now();
+      script.src = `main.js?t=${now}`;
+    }
+  </script>
 </body>
 </html>
