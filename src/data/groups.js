@@ -1,6 +1,8 @@
-// src/data/groups.js
-// 各48グループのメンバー一覧データ
-// Webアプリ側でグループ選択時にこのデータを参照します
+/* 
+  src/data/groups.js
+  劇場公演出演回数ツール用：48グループごとのメンバー一覧
+  注意：コメント付きのJSファイルだが、Webアプリでfetch後、正規表現とJSON.parseで安全に読み込む前提
+*/
 
 const groups = {
   "AKB48": [
@@ -52,5 +54,4 @@ const groups = {
   ]
 };
 
-// 外部ファイルとして読み込む場合は下記行を必要に応じて有効化してください
-// export default groups;
+/* このファイルは ES Module では export しません。純粋な fetch 対象のJSファイルとして使います */
