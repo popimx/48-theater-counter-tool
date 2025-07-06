@@ -5,9 +5,9 @@
   <title>劇場公演 出演回数ツール</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* 基本のスタイル */
+    /* 基本スタイル */
     body {
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       max-width: 375px;
       margin: 0 auto;
       padding: 1rem;
@@ -46,15 +46,6 @@
       margin-bottom: 0.5rem;
     }
 
-    ol, ul {
-      margin-left: 1.2rem;
-      margin-bottom: 1rem;
-    }
-
-    li {
-      margin-bottom: 0.3rem;
-    }
-
     details summary {
       font-weight: bold;
       cursor: pointer;
@@ -63,6 +54,15 @@
 
     details[open] summary {
       color: #1976d2;
+    }
+
+    ol, ul {
+      margin-left: 1.2rem;
+      margin-bottom: 1rem;
+    }
+
+    li {
+      margin-bottom: 0.3rem;
     }
   </style>
 </head>
@@ -81,15 +81,14 @@
     <option value="">-- メンバーを選択 --</option>
   </select>
 
-  <!-- 出力エリア -->
+  <!-- 出力結果 -->
   <div id="output"></div>
 
   <script>
-    // 外部ファイルのURL（GitHub raw などに置き換えて使用）
+    // データファイルのURL（GitHub Pagesなどに対応）
     const GROUPS_URL = './src/data/groups.js';
     const PERFORMANCE_URL = './src/data/performance.js';
 
-    // データ格納用変数
     let groups = {};
     let performances = [];
 
@@ -97,52 +96,33 @@
     const memberSelect = document.getElementById('member-select');
     const output = document.getElementById('output');
 
-    // -------------------------------
-    // groups.js の読み込み用関数
-    // 実は groups.js は JSファイルなので普通のfetchはテキストを取るだけ。
-    // なので安全にデータだけ抽出するため、groups.js内の「const groups = { ... };」から
-    // groupsのオブジェクト部分だけを取り出しevalせずにパースする工夫を行います。
-    // -------------------------------
+    // groups.js を fetch → groups オブジェクト抽出
     async function fetchGroups() {
       const res = await fetch(GROUPS_URL);
-      if (!res.ok) throw new Error('groups.jsの取得に失敗しました');
+      if (!res.ok) throw new Error('groups.js の取得に失敗しました');
       const text = await res.text();
-
-      // groupsオブジェクト部分を正規表現で抽出（const groups = { ... }; の中身だけ）
       const match = text.match(/const\s+groups\s*=\s*(\{[\s\S]*\});/);
-      if (!match) throw new Error('groups.jsの形式が不正です');
+      if (!match) throw new Error('groups.js の形式が不正です');
 
-      // JSON.parseできる形に整形（シングルクオートをダブルクオートに変換、コメントは事前に消すなど必要に応じて）
-      let jsonStr = match[1]
-        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // キーをダブルクオートに
-        .replace(/'/g, '"'); // シングルクオートをダブルクオートに
-      // JSON.parseできるように改行や余計なスペースは問題なし
-
+      const jsonStr = match[1]
+        .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // キーをクオート化
+        .replace(/'/g, '"'); // シングルクオートをダブルに
       groups = JSON.parse(jsonStr);
     }
 
-    // -------------------------------
-    // performance.js の読み込み用関数
-    // 同様にperformance.jsからperformances配列を抽出しパース
-    // -------------------------------
+    // performance.js を fetch → performances 配列抽出
     async function fetchPerformances() {
       const res = await fetch(PERFORMANCE_URL);
-      if (!res.ok) throw new Error('performance.jsの取得に失敗しました');
+      if (!res.ok) throw new Error('performance.js の取得に失敗しました');
       const text = await res.text();
-
-      // performances配列部分を抽出（const performances = [ ... ]; の中身）
       const match = text.match(/const\s+performances\s*=\s*(\[[\s\S]*\]);/);
-      if (!match) throw new Error('performance.jsの形式が不正です');
+      if (!match) throw new Error('performance.js の形式が不正です');
 
-      let jsonStr = match[1]
-        .replace(/'/g, '"'); // シングルクオートをダブルクオートに
-
+      const jsonStr = match[1].replace(/'/g, '"');
       performances = JSON.parse(jsonStr);
     }
 
-    // -------------------------------
-    // グループ選択肢をセットアップする関数
-    // -------------------------------
+    // グループ選択肢の設定
     function setupGroupOptions() {
       Object.keys(groups).forEach(group => {
         const opt = document.createElement('option');
@@ -152,9 +132,7 @@
       });
     }
 
-    // -------------------------------
-    // グループ選択時にメンバー選択肢を切り替える関数
-    // -------------------------------
+    // グループ選択時：メンバー選択肢更新
     function onGroupChange() {
       const selectedGroup = groupSelect.value;
       memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
@@ -171,70 +149,54 @@
       });
     }
 
-    // -------------------------------
-    // メンバー選択時に出演回数などを表示する関数
-    // -------------------------------
+    // メンバー選択時：情報表示
     function onMemberChange() {
       const member = memberSelect.value;
       output.innerHTML = '';
       if (!member) return;
 
       const today = new Date();
+      const past = performances.filter(p => new Date(p.date) <= today);
+      const future = performances.filter(p => new Date(p.date) > today);
 
-      // 過去公演と未来公演に分ける
-      const pastPerformances = performances.filter(p => new Date(p.date) <= today);
-      const futurePerformances = performances.filter(p => new Date(p.date) > today);
-
-      // 過去公演でメンバーが出演したものを抽出
-      const memberPast = pastPerformances.filter(p => p.members.includes(member));
+      const memberPast = past.filter(p => p.members.includes(member));
       const totalCount = memberPast.length;
 
-      // --- 出演履歴（最新順） ---
       const history = memberPast
-        .map((p, i) => {
-          // 出演回数は古い順からカウントして表示したいので、逆順表示対応
-          return `${totalCount - i}回目 ${p.date} ${p.stage}${p.time ? '（' + p.time + '）' : ''}`;
-        })
+        .map((p, i) => `${totalCount - i}回目 ${p.date} ${p.stage}${p.time ? '（' + p.time + '）' : ''}`)
         .reverse();
 
-      // --- 節目表示（総出演回数の下2桁が90〜99回の場合） ---
+      // --- 節目表示 ---
       const countMod100 = totalCount % 100;
       let milestoneText = '';
       if (countMod100 >= 90 && totalCount > 0) {
         const milestone = Math.ceil(totalCount / 100) * 100;
         const remaining = milestone - totalCount;
+        const milestonePerformance = future.filter(p => p.members.includes(member))[remaining - 1];
 
-        // 未来公演の中で節目達成回数の公演を探す
-        const milestonePerformance = futurePerformances.filter(p => p.members.includes(member))[remaining - 1];
-
-        if (milestonePerformance) {
-          milestoneText = `（${milestone}回目は ${milestonePerformance.date} の「${milestonePerformance.stage}」${milestonePerformance.time ? '（' + milestonePerformance.time + '）' : ''} 公演の予定）`;
-        } else {
-          milestoneText = `あと${remaining}回で${milestone}回の節目達成！`;
-        }
+        milestoneText = milestonePerformance
+          ? `（${milestone}回目は ${milestonePerformance.date}「${milestonePerformance.stage}」${milestonePerformance.time ? '（' + milestonePerformance.time + '）' : ''} 予定）`
+          : `あと${remaining}回で${milestone}回の節目達成！`;
       }
 
       // --- 演目別ランキング ---
-      // そのメンバーが出演した公演ごとに共演者の出演回数をカウント
       const stageCounts = {};
-      pastPerformances.forEach(p => {
+      past.forEach(p => {
         if (!p.members.includes(member)) return;
         if (!stageCounts[p.stage]) stageCounts[p.stage] = {};
         p.members.forEach(m => {
           stageCounts[p.stage][m] = (stageCounts[p.stage][m] || 0) + 1;
         });
       });
-
-      // 演目ごとに共演者ランキング用HTML作成
       const stageHtml = Object.entries(stageCounts).map(([stage, counts]) => {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        const listItems = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
-        return `<details><summary>演目: ${stage}</summary><ol>${listItems}</ol></details>`;
+        const items = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
+        return `<details><summary>演目: ${stage}</summary><ol>${items}</ol></details>`;
       }).join('');
 
       // --- 年別ランキング ---
       const yearCounts = {};
-      pastPerformances.forEach(p => {
+      past.forEach(p => {
         if (!p.members.includes(member)) return;
         const year = p.date.slice(0, 4);
         if (!yearCounts[year]) yearCounts[year] = {};
@@ -242,14 +204,13 @@
           yearCounts[year][m] = (yearCounts[year][m] || 0) + 1;
         });
       });
-
       const yearHtml = Object.entries(yearCounts).map(([year, counts]) => {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        const listItems = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
-        return `<details><summary>${year}年ランキング</summary><ol>${listItems}</ol></details>`;
+        const items = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
+        return `<details><summary>${year}年ランキング</summary><ol>${items}</ol></details>`;
       }).join('');
 
-      // --- 共演回数ランキング ---
+      // --- 共演回数 ---
       const coCounts = {};
       memberPast.forEach(p => {
         p.members.forEach(m => {
@@ -257,11 +218,11 @@
           coCounts[m] = (coCounts[m] || 0) + 1;
         });
       });
+      const coHtml = `<ol>${Object.entries(coCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([m, c]) => `<li>${m}（${c}回）</li>`).join('')}</ol>`;
 
-      const coList = Object.entries(coCounts).sort((a, b) => b[1] - a[1]);
-      const coHtml = `<ol>${coList.map(([m, c]) => `<li>${m}（${c}回）</li>`).join('')}</ol>`;
-
-      // --- 結果表示 ---
+      // --- 表示出力 ---
       output.innerHTML = `
         <div class="highlight">総出演回数: ${totalCount}回</div>
         ${milestoneText ? `<div>節目まであと${100 - countMod100}回！<br>${milestoneText}</div>` : ''}
@@ -284,9 +245,7 @@
       `;
     }
 
-    // -------------------------------
-    // 初期化処理: データ読み込み → UIセットアップ
-    // -------------------------------
+    // 初期化処理：データ読み込み → イベント設定
     async function init() {
       try {
         await fetchGroups();
@@ -295,13 +254,12 @@
         groupSelect.addEventListener('change', onGroupChange);
         memberSelect.addEventListener('change', onMemberChange);
       } catch (e) {
-        output.innerHTML = `<p style="color:red;">データの読み込みに失敗しました: ${e.message}</p>`;
+        output.innerHTML = `<p style="color:red;">データ読み込み失敗: ${e.message}</p>`;
         groupSelect.disabled = true;
         memberSelect.disabled = true;
       }
     }
 
-    // ページ読み込み時に初期化開始
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
