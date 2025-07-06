@@ -1,95 +1,123 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <title>劇場公演 出演回数ツール</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* ---- 基本スタイル（余白と行間を調整） ---- */
+    /* ---- iPhone 375px幅に最適化・余白スリム化 ---- */
     body {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       max-width: 375px;
       margin: 0 auto;
-      padding: 0.75rem 0.75rem 1rem;
+      padding: 0.5rem 0.75rem;
       background: #f9f9f9;
       color: #333;
       line-height: 1.3;
+      font-size: 0.95rem;
     }
 
     header {
       text-align: center;
-      font-size: 1.4rem;
-      font-weight: 700;
-      margin-bottom: 0.8rem;
+      font-size: 1.25rem;
+      font-weight: bold;
+      margin-bottom: 0.75rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
     }
 
     select {
       width: 100%;
-      padding: 0.4rem 0.5rem;
+      padding: 0.4rem;
       font-size: 0.95rem;
       margin-bottom: 0.8rem;
       border: 1px solid #ccc;
       border-radius: 4px;
+      background: #fff;
     }
 
     #output {
       margin-top: 1rem;
       background: #fff;
-      padding: 0.9rem 1rem;
+      padding: 0.75rem;
       border-radius: 6px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
       white-space: pre-wrap;
-      font-size: 0.95rem;
     }
 
     .highlight {
-      font-weight: 700;
+      font-weight: bold;
       color: #1976d2;
       font-size: 1.1rem;
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    h3 {
+      font-size: 1rem;
+      margin: 0.6rem 0 0.3rem;
     }
 
     ol, ul {
-      margin-left: 1rem;
-      margin-bottom: 0.8rem;
+      margin-left: 1.1rem;
+      padding-left: 0;
+      margin-bottom: 0.5rem;
     }
 
     li {
-      margin-bottom: 0.2rem;
+      margin-bottom: 0.25rem;
     }
 
     details summary {
-      font-weight: 700;
+      font-weight: bold;
       cursor: pointer;
       padding: 0.2rem 0;
-      font-size: 1rem;
+      font-size: 0.95rem;
     }
 
     details[open] summary {
       color: #1976d2;
+    }
+
+    @media (max-width: 375px) {
+      body {
+        padding: 0.5rem;
+        font-size: 0.92rem;
+      }
+
+      .highlight {
+        font-size: 1.05rem;
+      }
+
+      h3 {
+        font-size: 0.95rem;
+      }
+
+      select {
+        font-size: 0.92rem;
+      }
     }
   </style>
 </head>
 <body>
   <header>劇場公演 出演回数ツール</header>
 
-  <!-- グループ選択 -->
   <label for="group-select">グループを選択：</label>
   <select id="group-select">
     <option value="">-- グループを選択 --</option>
   </select>
 
-  <!-- メンバー選択 -->
   <label for="member-select">メンバーを選択：</label>
   <select id="member-select" disabled>
     <option value="">-- メンバーを選択 --</option>
   </select>
 
-  <!-- 出力表示エリア -->
   <div id="output"></div>
 
   <script>
-    // JSONファイルのパス（groups.json, performance.jsonを用意してください）
     const GROUPS_URL = './src/data/groups.json';
     const PERFORMANCE_URL = './src/data/performance.json';
 
@@ -100,21 +128,18 @@
     const memberSelect = document.getElementById('member-select');
     const output = document.getElementById('output');
 
-    // groups.jsonをfetchして読み込み
     async function fetchGroups() {
       const res = await fetch(GROUPS_URL);
       if (!res.ok) throw new Error('groups.jsonの取得に失敗しました');
       groups = await res.json();
     }
 
-    // performance.jsonをfetchして読み込み
     async function fetchPerformances() {
       const res = await fetch(PERFORMANCE_URL);
       if (!res.ok) throw new Error('performance.jsonの取得に失敗しました');
       performances = await res.json();
     }
 
-    // グループ選択肢セットアップ
     function setupGroupOptions() {
       Object.keys(groups).forEach(group => {
         const opt = document.createElement('option');
@@ -124,7 +149,6 @@
       });
     }
 
-    // グループ変更時：メンバー選択肢更新
     function onGroupChange() {
       const selectedGroup = groupSelect.value;
       memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
@@ -141,36 +165,30 @@
       });
     }
 
-    // メンバー選択時：出演回数などを表示
     function onMemberChange() {
       const member = memberSelect.value;
       output.innerHTML = '';
       if (!member) return;
 
       const today = new Date();
-
-      // 過去の公演のみ抽出（未来の公演は節目予想に利用）
       const pastPerformances = performances.filter(p => new Date(p.date) <= today);
       const futurePerformances = performances.filter(p => new Date(p.date) > today);
 
-      // 対象メンバー出演の過去公演
       const memberPast = pastPerformances.filter(p => p.members.includes(member));
       const totalCount = memberPast.length;
 
-      // 出演履歴を降順（最新→古い）
       const history = memberPast
-        .slice()  // 複製
+        .slice()
         .sort((a,b) => b.date.localeCompare(a.date))
         .map((p, i) => `${i+1}回目 ${p.date} ${p.stage}${p.time ? '（' + p.time + '）' : ''}`);
 
-      // 節目（100回単位の手前90〜99回の時）を判定
       const countMod100 = totalCount % 100;
       let milestoneText = '';
       if (countMod100 >= 90 && totalCount > 0) {
         const milestone = Math.ceil(totalCount / 100) * 100;
         const remaining = milestone - totalCount;
-
         const milestonePerformance = futurePerformances.filter(p => p.members.includes(member))[remaining - 1];
+
         if (milestonePerformance) {
           milestoneText = `（${milestone}回目は ${milestonePerformance.date} の「${milestonePerformance.stage}」${milestonePerformance.time ? '（' + milestonePerformance.time + '）' : ''} 公演の予定）`;
         } else {
@@ -178,7 +196,6 @@
         }
       }
 
-      // 演目別ランキング（過去公演の全メンバー回数）
       const stageCounts = {};
       pastPerformances.forEach(p => {
         if (!p.members.includes(member)) return;
@@ -187,13 +204,13 @@
           stageCounts[p.stage][m] = (stageCounts[p.stage][m] || 0) + 1;
         });
       });
+
       const stageHtml = Object.entries(stageCounts).map(([stage, counts]) => {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
         const listItems = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
         return `<details><summary>演目: ${stage}</summary><ol>${listItems}</ol></details>`;
       }).join('');
 
-      // 年別ランキング
       const yearCounts = {};
       pastPerformances.forEach(p => {
         if (!p.members.includes(member)) return;
@@ -203,13 +220,13 @@
           yearCounts[year][m] = (yearCounts[year][m] || 0) + 1;
         });
       });
+
       const yearHtml = Object.entries(yearCounts).map(([year, counts]) => {
         const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
         const listItems = sorted.map(([m, c]) => `<li>${m} (${c}回)</li>`).join('');
         return `<details><summary>${year}年ランキング</summary><ol>${listItems}</ol></details>`;
       }).join('');
 
-      // 共演回数ランキング
       const coCounts = {};
       memberPast.forEach(p => {
         p.members.forEach(m => {
@@ -217,10 +234,10 @@
           coCounts[m] = (coCounts[m] || 0) + 1;
         });
       });
+
       const coList = Object.entries(coCounts).sort((a, b) => b[1] - a[1]);
       const coHtml = `<ol>${coList.map(([m, c]) => `<li>${m}（${c}回）</li>`).join('')}</ol>`;
 
-      // 表示更新
       output.innerHTML = `
         <div class="highlight">総出演回数: ${totalCount}回</div>
         ${milestoneText ? `<div>節目まであと${100 - countMod100}回！<br>${milestoneText}</div>` : ''}
@@ -243,7 +260,6 @@
       `;
     }
 
-    // 初期化関数：JSON読み込み→グループセット→イベント設定
     async function init() {
       try {
         await fetchGroups();
