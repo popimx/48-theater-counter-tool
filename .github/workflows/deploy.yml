@@ -1,0 +1,36 @@
+# .github/workflows/deploy.yml
+
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]  # mainブランチにpushされたら自動デプロイ
+  workflow_dispatch:  # 手動でも実行できる
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. リポジトリのコードを取得
+      - uses: actions/checkout@v4
+
+      # 2. GitHub Pages の設定を準備
+      - uses: actions/configure-pages@v5
+
+      # 3. アーティファクトとして静的ファイルをアップロード
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'  # index.html や src/ ディレクトリがあるルート
+
+      # 4. デプロイを実行
+      - uses: actions/deploy-pages@v4
