@@ -5,61 +5,64 @@
   <title>劇場公演 出演回数ツール</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    /* ---- 基本スタイル ---- */
+    /* ---- 基本スタイル（余白と行間を調整） ---- */
     body {
       font-family: -apple-system, BlinkMacSystemFont, sans-serif;
       max-width: 375px;
       margin: 0 auto;
-      padding: 1rem;
+      padding: 0.75rem 0.75rem 1rem;
       background: #f9f9f9;
       color: #333;
+      line-height: 1.3;
     }
 
     header {
       text-align: center;
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-bottom: 1rem;
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.8rem;
     }
 
     select {
       width: 100%;
-      padding: 0.5rem;
-      font-size: 1rem;
-      margin-bottom: 1rem;
+      padding: 0.4rem 0.5rem;
+      font-size: 0.95rem;
+      margin-bottom: 0.8rem;
       border: 1px solid #ccc;
       border-radius: 4px;
     }
 
     #output {
-      margin-top: 1.5rem;
+      margin-top: 1rem;
       background: #fff;
-      padding: 1rem;
+      padding: 0.9rem 1rem;
       border-radius: 6px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 5px rgba(0,0,0,0.08);
       white-space: pre-wrap;
+      font-size: 0.95rem;
     }
 
     .highlight {
-      font-weight: bold;
+      font-weight: 700;
       color: #1976d2;
-      font-size: 1.2rem;
-      margin-bottom: 0.5rem;
-    }
-
-    ol, ul {
-      margin-left: 1.2rem;
-      margin-bottom: 1rem;
-    }
-
-    li {
+      font-size: 1.1rem;
       margin-bottom: 0.3rem;
     }
 
+    ol, ul {
+      margin-left: 1rem;
+      margin-bottom: 0.8rem;
+    }
+
+    li {
+      margin-bottom: 0.2rem;
+    }
+
     details summary {
-      font-weight: bold;
+      font-weight: 700;
       cursor: pointer;
-      padding: 0.3rem 0;
+      padding: 0.2rem 0;
+      font-size: 1rem;
     }
 
     details[open] summary {
