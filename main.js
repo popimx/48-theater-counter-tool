@@ -102,7 +102,7 @@ function onMemberChange() {
       return 0;
     })
     .reverse()
-    .map((entry, i, arr) => [`${arr.length - i}回目`, entry.date, entry.stage, entry.time]);
+    .map((entry, i, arr) => [`${arr.length - i, entry.date, entry.stage, entry.time]);
 
   // 演目別出演回数（対象演目に絞る）
   const stageCountMap = {};
