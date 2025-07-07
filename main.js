@@ -1,5 +1,3 @@
-// main.js
-
 const GROUPS_URL = './src/data/groups.json';
 const PERFORMANCE_URL = './src/data/performance.json';
 
@@ -102,7 +100,7 @@ function onMemberChange() {
       return 0;
     })
     .reverse()
-    .map((entry, i, arr) => [`${arr.length - i, entry.date, entry.stage, entry.time]);
+    .map((entry, i, arr) => [arr.length - i, entry.date, entry.stage, entry.time]);
 
   // 演目別出演回数（対象演目に絞る）
   const stageCountMap = {};
