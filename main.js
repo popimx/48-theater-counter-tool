@@ -128,7 +128,7 @@ function onMemberChange() {
     .reverse()
     .map((entry, i, arr) => [arr.length - i, entry.date, entry.stage, entry.time]);
 
-  // 演目別出演回数（対象演目に絞る）
+  // 演目別出演回数
   const stageCountMap = {};
   memberPast.forEach(p => {
     if (p.stage.startsWith(selectedGroup)) {
@@ -136,8 +136,6 @@ function onMemberChange() {
       stageCountMap[name] = (stageCountMap[name] || 0) + 1;
     }
   });
-
-  // 演目別出演回数を多い順に並べ替え
   const stageRows = Object.entries(stageCountMap)
     .sort((a, b) => b[1] - a[1])
     .map(([stage, count]) => [stage, `${count}回`]);
@@ -155,19 +153,15 @@ function onMemberChange() {
     groups[selectedGroup] || []
   ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
 
-  // 演目別出演回数ランキング（演目別出演回数の多い順に並べ替え）
+  // 演目別出演回数ランキング
   const stageRanking = {};
   const stagesSorted = Object.entries(stageCountMap).sort((a, b) => b[1] - a[1]).map(([stage]) => stage);
   stagesSorted.forEach(stageFull => {
-    const stage = stageFull;
     const countMap = {};
-    past.filter(p => {
-      const stageName = p.stage.replace(selectedGroup, '').trim();
-      return stageName === stage;
-    }).forEach(p =>
+    past.filter(p => p.stage.replace(selectedGroup, '').trim() === stageFull).forEach(p =>
       p.members.forEach(m => countMap[m] = (countMap[m] || 0) + 1)
     );
-    stageRanking[stage] = sortRankingWithTies(
+    stageRanking[stageFull] = sortRankingWithTies(
       Object.entries(countMap).map(([name, count]) => ({ name, count })),
       groups[selectedGroup] || []
     ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
@@ -187,21 +181,21 @@ function onMemberChange() {
     ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
   });
 
-  // 出力HTML生成
-  let html = `
-    <div class="highlight">総出演回数：${totalCount}回</div>
-  `;
+  // HTML出力
+  let html = `<div class="highlight">総出演回数：${totalCount}回</div>`;
 
   if (remaining > 0 && remaining <= 10) {
     html += `
-      <div class="highlight" style="font-weight:normal; font-size:1rem; color:#000; margin-top:-8px; margin-bottom:2px;">
-        ${nextMilestone}回まであと${remaining}回
+      <div style="font-size:1rem; color:#000; margin-top:-8px; margin-bottom:2px;">
+        ${nextMilestone}回公演まで あと${remaining}回
       </div>
     `;
     if (milestoneFutureEvent) {
+      const { date, stage, time } = milestoneFutureEvent;
+      const label = time ? `${date} の ${stage}（${time}）` : `${date} の ${stage}`;
       html += `
-        <div class="highlight" style="font-weight:normal; font-size:1rem; color:#000; margin-top:0; margin-bottom:8px;">
-          ${nextMilestone}回公演 は ${milestoneFutureEvent.date} の ${milestoneFutureEvent.stage} で達成予定です
+        <div style="font-size:1rem; color:#000; margin-top:0; margin-bottom:8px;">
+          ${label} で達成予定
         </div>
       `;
     }
@@ -209,7 +203,6 @@ function onMemberChange() {
     html += '<br>';
   }
 
-  // 節目達成日（100回ごと）を出演履歴と演目別出演回数の間に表示
   if (milestones.length > 0) {
     html += `
       <h3>節目達成日（100回ごと）</h3>
