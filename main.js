@@ -81,9 +81,11 @@ function onMemberChange() {
   output.innerHTML = '';
   if (!member || !selectedGroup) return;
 
-  const today = new Date();
-  const past = performances.filter(p => new Date(p.date) <= today);
-  const future = performances.filter(p => new Date(p.date) > today);
+  // 日本時間で日付文字列を生成し文字列比較する
+  const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '-');
+
+  const past = performances.filter(p => p.date.trim() <= todayStr);
+  const future = performances.filter(p => p.date.trim() > todayStr);
   const memberPast = past.filter(p => p.members.includes(member));
   const totalCount = memberPast.length;
 
