@@ -210,11 +210,10 @@ function onMemberChange() {
         </div>
       `;
     }
-  } else if (remaining % 100 <= 90) {
-    // 未来予測文なしで余白も不要なので空行なし
   } else {
-    // それ以外は改行を入れる（元の挙動）
-    html += '<br>';
+    if (milestones.length === 0) {
+      html += '<br>';
+    }
   }
 
   // 出演履歴
