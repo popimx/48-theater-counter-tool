@@ -109,7 +109,14 @@ function onMemberChange() {
   const milestones = [];
   for (let milestone = 100; milestone <= totalCount; milestone += 100) {
     const perf = memberPast[milestone - 1];
-    if (perf) milestones.push({ date: perf.date, stage: perf.stage, milestone });
+    if (perf) {
+      // グループ名がstage先頭にある場合はカットする
+      let displayStage = perf.stage;
+      if (perf.stage.startsWith(selectedGroup)) {
+        displayStage = perf.stage.replace(selectedGroup, '').trim();
+      }
+      milestones.push({ date: perf.date, stage: displayStage, milestone });
+    }
   }
 
   // 出演履歴
@@ -184,6 +191,7 @@ function onMemberChange() {
   // HTML出力
   let html = `<div class="highlight">総出演回数：${totalCount}回</div>`;
 
+  // 未来予測文の表示条件と余白の制御
   if (remaining > 0 && remaining <= 10) {
     html += `
       <div style="font-size:1rem; color:#000; margin-top:-8px; margin-bottom:2px;">
@@ -192,27 +200,39 @@ function onMemberChange() {
     `;
     if (milestoneFutureEvent) {
       const { date, stage, time } = milestoneFutureEvent;
-      const label = time ? `${date} の ${stage}（${time}）` : `${date} の ${stage}`;
+      const displayStage = stage.startsWith(selectedGroup)
+        ? stage.replace(selectedGroup, '').trim()
+        : stage;
+      const label = time ? `${date} の ${displayStage}（${time}）` : `${date} の ${displayStage}`;
       html += `
         <div style="font-size:1rem; color:#000; margin-top:0; margin-bottom:8px;">
           ${label} で達成予定
         </div>
       `;
     }
+  } else if (remaining % 100 <= 90) {
+    // 未来予測文なしで余白も不要なので空行なし
   } else {
+    // それ以外は改行を入れる（元の挙動）
     html += '<br>';
   }
 
+  // 出演履歴
+  html += `
+    <h3>出演履歴</h3>
+    ${createTableHTML(['回数', '日付', '演目', '時間'], historyRows)}
+  `;
+
+  // 節目達成日（出演履歴の下に表示）
   if (milestones.length > 0) {
     html += `
-      <h3>節目達成日（100回ごと）</h3>
+      <h3>節目達成日</h3>
       ${createTableHTML(['節目', '日付', '演目'], milestones.map(m => [`${m.milestone}回`, m.date, m.stage]))}
     `;
   }
 
+  // 続きの出力
   html += `
-    <h3>出演履歴</h3>
-    ${createTableHTML(['回数', '日付', '演目', '時間'], historyRows)}
     <h3>演目別出演回数</h3>
     ${createTableHTML(['演目', '回数'], stageRows)}
     <h3>演目別出演回数ランキング</h3>
