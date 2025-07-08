@@ -211,9 +211,7 @@ function onMemberChange() {
       `;
     }
   } else {
-    if (milestones.length === 0) {
-      html += '<br>';
-    }
+    // 何もしない（改行なし）
   }
 
   // 出演履歴
