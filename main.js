@@ -194,13 +194,13 @@ function onMemberChange() {
 
   if (remaining > 0 && remaining <= 10) {
     html += `
-      <div class="highlight" style="font-weight:normal; font-size:1rem; color:#black; margin-top:-8px; margin-bottom:2px;">
+      <div class="highlight" style="font-weight:normal; font-size:1rem; color:#000; margin-top:-8px; margin-bottom:2px;">
         ${nextMilestone}回まであと${remaining}回
       </div>
     `;
     if (milestoneFutureEvent) {
       html += `
-        <div class="highlight" style="font-weight:normal; font-size:1rem; color:#black; margin-top:0; margin-bottom:8px;">
+        <div class="highlight" style="font-weight:normal; font-size:1rem; color:#000; margin-top:0; margin-bottom:8px;">
           ${nextMilestone}回公演 は ${milestoneFutureEvent.date} の ${milestoneFutureEvent.stage} で達成予定です
         </div>
       `;
