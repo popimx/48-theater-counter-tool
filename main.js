@@ -4,6 +4,11 @@ const PERFORMANCE_URL = './src/data/performance.json';
 let groups = {};
 let performances = [];
 
+// 🔽 グループの別名対応マップを追加（AKB48 卒業生 → AKB48 に統一）
+const GROUP_ALIAS = {
+  'AKB48 卒業生': 'AKB48'
+};
+
 const groupSelect = document.getElementById('group-select');
 const memberSelect = document.getElementById('member-select');
 const output = document.getElementById('output');
@@ -77,11 +82,11 @@ function sortRankingWithTies(arr, groupList = []) {
 
 function onMemberChange() {
   const selectedGroup = groupSelect.value;
+  const aliasGroup = GROUP_ALIAS[selectedGroup] || selectedGroup; // 🔽 alias対応
   const member = memberSelect.value;
   output.innerHTML = '';
   if (!member || !selectedGroup) return;
 
-  // 日本時間で日付文字列を生成し文字列比較する
   const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '-');
 
   const past = performances.filter(p => p.date.trim() <= todayStr);
@@ -111,8 +116,8 @@ function onMemberChange() {
     const perf = memberPast[milestone - 1];
     if (perf) {
       let displayStage = perf.stage;
-      if (perf.stage.startsWith(selectedGroup)) {
-        displayStage = perf.stage.replace(selectedGroup, '').trim();
+      if (perf.stage.startsWith(aliasGroup)) {
+        displayStage = perf.stage.replace(aliasGroup, '').trim(); // 🔽 aliasGroup使用
       }
       milestones.push({ date: perf.date, stage: displayStage, milestone });
     }
@@ -120,8 +125,13 @@ function onMemberChange() {
 
   const historyRows = memberPast
     .map(p => {
-      const groupPrefix = Object.keys(groups).find(g => p.stage.startsWith(g));
-      const stage = (groupPrefix === selectedGroup) ? p.stage.replace(groupPrefix, '').trim() : p.stage;
+      const groupPrefix = Object.keys(groups).concat(Object.keys(GROUP_ALIAS)).find(g =>
+        p.stage.startsWith(GROUP_ALIAS[g] || g)
+      );
+      const resolvedGroup = GROUP_ALIAS[groupPrefix] || groupPrefix;
+      const stage = (resolvedGroup === aliasGroup)
+        ? p.stage.replace(resolvedGroup, '').trim()
+        : p.stage;
       return { date: p.date, stage, time: p.time || '', full: p };
     })
     .sort((a, b) => {
@@ -135,8 +145,8 @@ function onMemberChange() {
 
   const stageCountMap = {};
   memberPast.forEach(p => {
-    if (p.stage.startsWith(selectedGroup)) {
-      const name = p.stage.replace(selectedGroup, '').trim();
+    if (p.stage.startsWith(aliasGroup)) {
+      const name = p.stage.replace(aliasGroup, '').trim();
       stageCountMap[name] = (stageCountMap[name] || 0) + 1;
     }
   });
@@ -153,19 +163,19 @@ function onMemberChange() {
   });
   const coRanking = sortRankingWithTies(
     Object.entries(coCounts).map(([name, count]) => ({ name, count })),
-    groups[selectedGroup] || []
+    (groups[aliasGroup] || []).flat()
   ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
 
   const stageRanking = {};
   const stagesSorted = Object.entries(stageCountMap).sort((a, b) => b[1] - a[1]).map(([stage]) => stage);
   stagesSorted.forEach(stageFull => {
     const countMap = {};
-    past.filter(p => p.stage.replace(selectedGroup, '').trim() === stageFull).forEach(p =>
+    past.filter(p => p.stage.replace(aliasGroup, '').trim() === stageFull).forEach(p =>
       p.members.forEach(m => countMap[m] = (countMap[m] || 0) + 1)
     );
     stageRanking[stageFull] = sortRankingWithTies(
       Object.entries(countMap).map(([name, count]) => ({ name, count })),
-      groups[selectedGroup] || []
+      (groups[aliasGroup] || []).flat()
     ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
   });
 
@@ -182,12 +192,12 @@ function onMemberChange() {
   const years = [...new Set(memberPast.map(p => p.date.slice(0, 4)))];
   years.forEach(year => {
     const countMap = {};
-    past.filter(p => p.date.startsWith(year) && p.stage.startsWith(selectedGroup)).forEach(p =>
+    past.filter(p => p.date.startsWith(year) && p.stage.startsWith(aliasGroup)).forEach(p =>
       p.members.forEach(m => countMap[m] = (countMap[m] || 0) + 1)
     );
     yearRanking[year] = sortRankingWithTies(
       Object.entries(countMap).map(([name, count]) => ({ name, count })),
-      groups[selectedGroup] || []
+      (groups[aliasGroup] || []).flat()
     ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
   });
 
@@ -201,8 +211,8 @@ function onMemberChange() {
     `;
     if (milestoneFutureEvent) {
       const { date, stage, time } = milestoneFutureEvent;
-      const displayStage = stage.startsWith(selectedGroup)
-        ? stage.replace(selectedGroup, '').trim()
+      const displayStage = stage.startsWith(aliasGroup)
+        ? stage.replace(aliasGroup, '').trim()
         : stage;
       const label = time ? `${date} の ${displayStage}（${time}）` : `${date} の ${displayStage}`;
       html += `
