@@ -46,9 +46,15 @@ function onGroupChange() {
   if (!rawGroup) return;
 
   const realGroup = GROUP_ALIAS[rawGroup] || rawGroup;
-  const merged = [ ...(groups[realGroup] || []) ];
-  const gradGroup = realGroup + ' 卒業生';
-  if (groups[gradGroup]) merged.push(...groups[gradGroup]);
+  const merged = [];
+
+  // 現役メンバーと卒業生を両方含める（ただし卒業生選択時は卒業生のみ）
+  if (rawGroup.endsWith('卒業生')) {
+    if (groups[rawGroup]) merged.push(...groups[rawGroup]);
+  } else {
+    if (groups[realGroup]) merged.push(...groups[realGroup]);
+    if (groups[realGroup + ' 卒業生']) merged.push(...groups[realGroup + ' 卒業生']);
+  }
 
   merged.forEach(member => {
     const opt = document.createElement('option');
@@ -95,15 +101,15 @@ function onMemberChange() {
   if (!rawGroup || !member) return;
 
   const selectedGroup = GROUP_ALIAS[rawGroup] || rawGroup;
-  const todayStr = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
 
+  const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g,'-');
   const relevant = performances.filter(p => p.stage.startsWith(selectedGroup));
   const past = relevant.filter(p => p.date <= todayStr);
   const future = relevant.filter(p => p.date > todayStr);
   const memberPast = past.filter(p => p.members.includes(member));
   const totalCount = memberPast.length;
 
-  const nextMilestone = Math.ceil(totalCount / 100) * 100;
+  const nextMilestone = Math.ceil(totalCount/100)*100;
   const remaining = nextMilestone - totalCount;
 
   let milestoneFutureEvent = null;
@@ -121,7 +127,7 @@ function onMemberChange() {
   for (let m = 100; m <= totalCount; m += 100) {
     const perf = memberPast[m-1];
     if (perf) {
-      const stage = perf.stage.replace(selectedGroup, '').trim();
+      let stage = perf.stage.replace(selectedGroup, '').trim();
       milestones.push({ date: perf.date, stage, milestone: m });
     }
   }
@@ -142,8 +148,13 @@ function onMemberChange() {
     if (m===member) return;
     coCounts[m] = (coCounts[m]||0)+1;
   }));
-  const mergedGroupList = [ ...(groups[selectedGroup] || []), ...(groups[selectedGroup + ' 卒業生'] || []) ];
-  const coRanking = sortRankingWithTies(Object.entries(coCounts).map(([n,c])=>({name:n,count:c})), mergedGroupList)
+
+  const groupMembers = [
+    ...(groups[selectedGroup] || []),
+    ...(groups[selectedGroup + ' 卒業生'] || [])
+  ];
+
+  const coRanking = sortRankingWithTies(Object.entries(coCounts).map(([n,c])=>({name:n,count:c})), groupMembers)
     .map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
 
   const stagesSorted = Object.keys(stageCountMap).sort((a,b)=>stageCountMap[b]-stageCountMap[a]);
@@ -153,7 +164,7 @@ function onMemberChange() {
     past.filter(p=>p.stage.replace(selectedGroup,'').trim()===st).forEach(p=>{
       p.members.forEach(m=>counts[m]=(counts[m]||0)+1);
     });
-    stageRanking[st] = sortRankingWithTies(Object.entries(counts).map(([n,c])=>({name:n,count:c})), mergedGroupList)
+    stageRanking[st] = sortRankingWithTies(Object.entries(counts).map(([n,c])=>({name:n,count:c})), groupMembers)
       .map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
   });
 
@@ -172,7 +183,7 @@ function onMemberChange() {
     past.filter(p=>p.date.startsWith(y)).forEach(p=>{
       p.members.forEach(m=>counts[m]=(counts[m]||0)+1);
     });
-    yearRanking[y] = sortRankingWithTies(Object.entries(counts).map(([n,c])=>({name:n,count:c})), mergedGroupList)
+    yearRanking[y] = sortRankingWithTies(Object.entries(counts).map(([n,c])=>({name:n,count:c})), groupMembers)
       .map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
   });
 
