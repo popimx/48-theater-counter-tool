@@ -39,18 +39,16 @@ function setupGroupOptions() {
 }
 
 function onGroupChange() {
-  const rawGroup = groupSelect.value;
+  const selectedGroup = groupSelect.value;
   memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
-  memberSelect.disabled = !rawGroup;
+  memberSelect.disabled = !selectedGroup;
   output.innerHTML = '';
-  if (!rawGroup) return;
+  if (!selectedGroup) return;
 
-  const realGroup = GROUP_ALIAS[rawGroup] || rawGroup;
-  const merged = [ ...(groups[realGroup] || []) ];
-  const gradGroup = realGroup + ' 卒業生';
-  if (groups[gradGroup]) merged.push(...groups[gradGroup]);
+  // メンバー表示は選択したグループ単独で表示（卒業生は別グループ）
+  const memberList = groups[selectedGroup] || [];
 
-  merged.forEach(member => {
+  memberList.forEach(member => {
     const opt = document.createElement('option');
     opt.value = member;
     opt.textContent = member;
@@ -78,7 +76,7 @@ function sortRankingWithTies(arr, groupList = []) {
     return a.name.localeCompare(b.name);
   });
   let lastCount = null, lastRank = 0;
-  arr.forEach((item,i) => {
+  arr.forEach((item, i) => {
     if (item.count !== lastCount) {
       lastCount = item.count;
       lastRank = i + 1;
@@ -89,42 +87,43 @@ function sortRankingWithTies(arr, groupList = []) {
 }
 
 function onMemberChange() {
-  const rawGroup = groupSelect.value;
+  const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
   output.innerHTML = '';
-  if (!rawGroup || !member) return;
+  if (!selectedGroup || !member) return;
 
-  const selectedGroup = GROUP_ALIAS[rawGroup] || rawGroup;
+  // ランキングは現役と卒業生の両方を対象にしたいのでグループ名を統合
+  let targetGroup = selectedGroup;
+  if (selectedGroup.endsWith(' 卒業生')) {
+    targetGroup = selectedGroup.replace(' 卒業生', '');
+  }
 
-  // 今日の日付（例：2025-07-09）を取得して performances の絞り込みに使用
-  const todayStr = new Date().toISOString().slice(0,10);
+  // 対象グループの現役＋卒業生メンバーをまとめる
+  const combinedMembers = [
+    ...(groups[targetGroup] || []),
+    ...(groups[targetGroup + ' 卒業生'] || [])
+  ];
 
-  // 選択グループの現役メンバー・卒業生をまとめて取得
-  const allMembers = [...(groups[selectedGroup] || [])];
-  const gradGroup = selectedGroup + ' 卒業生';
-  if (groups[gradGroup]) allMembers.push(...groups[gradGroup]);
+  const todayStr = new Date().toLocaleDateString('ja-JP').replace(/\//g, '-');
 
-  // performancesから、selectedGroupの公演だけ抽出（stageがグループ名で始まるもの）
-  const relevant = performances.filter(p => p.stage.startsWith(selectedGroup));
+  // performancesから対象のグループ（現役）の公演を抽出
+  // ※卒業生は公演のstage名には現役グループ名のみ使われている想定
+  const relevantPerformances = performances.filter(p => p.stage.startsWith(targetGroup));
+  const pastPerformances = relevantPerformances.filter(p => p.date <= todayStr);
+  const futurePerformances = relevantPerformances.filter(p => p.date > todayStr);
 
-  // 今日までの公演のみ
-  const past = relevant.filter(p => p.date <= todayStr);
-  // 今日より未来の公演は今は表示しない
-  const future = relevant.filter(p => p.date > todayStr);
-
-  // 選択メンバーが出演した過去公演のみ
-  const memberPast = past.filter(p => p.members.includes(member));
+  // 選択メンバーの過去出演履歴
+  const memberPast = pastPerformances.filter(p => p.members.includes(member));
   const totalCount = memberPast.length;
 
-  // 次の節目と残り回数計算
+  // 次の節目計算
   const nextMilestone = Math.ceil(totalCount / 100) * 100;
   const remaining = nextMilestone - totalCount;
 
-  // 未来公演で節目達成予定の公演
   let milestoneFutureEvent = null;
   if (remaining > 0 && remaining <= 10) {
     let count = totalCount;
-    for (const perf of future.filter(p => p.members.includes(member))) {
+    for (const perf of futurePerformances.filter(p => p.members.includes(member))) {
       if (++count >= nextMilestone) {
         milestoneFutureEvent = perf;
         break;
@@ -132,44 +131,32 @@ function onMemberChange() {
     }
   }
 
-  // 節目達成日を過去公演から計算
+  // 節目達成日一覧
   const milestones = [];
   for (let m = 100; m <= totalCount; m += 100) {
     const perf = memberPast[m - 1];
     if (perf) {
-      let stage = perf.stage;
-      if (stage.startsWith(selectedGroup)) {
-        stage = stage.replace(selectedGroup, '').trim();
-      }
-      milestones.push({ date: perf.date, stage, milestone: m });
+      let stageName = perf.stage.replace(targetGroup, '').trim();
+      milestones.push({ date: perf.date, stage: stageName, milestone: m });
     }
   }
 
-  // 出演履歴（降順、時間順も考慮）
+  // 出演履歴テーブルデータ作成
   const historyRows = memberPast
-    .slice()
-    .sort((a,b) => {
-      if (a.date !== b.date) return b.date.localeCompare(a.date);
-      if (a.time === '昼' && b.time === '夜') return -1;
-      if (a.time === '夜' && b.time === '昼') return 1;
-      return 0;
-    })
-    .map((p,i,arr) => [arr.length - i, p.date, p.stage.replace(selectedGroup, '').trim(), p.time || '']);
+    .sort((a, b) => a.date !== b.date ? b.date.localeCompare(a.date) : (a.time === '昼' ? -1 : 1))
+    .map((p, i, arr) => [arr.length - i, p.date, p.stage.replace(targetGroup, '').trim(), p.time || '']);
 
-  // 演目別出演回数集計
+  // 演目別出演回数
   const stageCountMap = {};
   memberPast.forEach(p => {
-    let stageName = p.stage;
-    if (stageName.startsWith(selectedGroup)) {
-      stageName = stageName.replace(selectedGroup, '').trim();
-    }
+    const stageName = p.stage.replace(targetGroup, '').trim();
     stageCountMap[stageName] = (stageCountMap[stageName] || 0) + 1;
   });
   const stageRows = Object.entries(stageCountMap)
-    .sort((a,b) => b[1] - a[1])
+    .sort((a, b) => b[1] - a[1])
     .map(([stage, count]) => [stage, `${count}回`]);
 
-  // 共演回数集計
+  // 共演回数集計（ランキング用）
   const coCounts = {};
   memberPast.forEach(p => {
     p.members.forEach(m => {
@@ -179,73 +166,57 @@ function onMemberChange() {
   });
   const coRanking = sortRankingWithTies(
     Object.entries(coCounts).map(([name, count]) => ({ name, count })),
-    allMembers
+    combinedMembers
   ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
 
-  // 演目別出演回数ランキング
-  const stagesSorted = Object.keys(stageCountMap).sort((a,b) => stageCountMap[b] - stageCountMap[a]);
+  // 演目別出演回数ランキング（メンバー集計は combinedMembers から）
+  const stagesSorted = Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a]);
   const stageRanking = {};
-  stagesSorted.forEach(stageName => {
-    const countMap = {};
-    past.filter(p => {
-      let st = p.stage;
-      if (st.startsWith(selectedGroup)) {
-        st = st.replace(selectedGroup, '').trim();
-      }
-      return st === stageName;
-    }).forEach(p => {
-      p.members.forEach(m => {
-        countMap[m] = (countMap[m] || 0) + 1;
-      });
+  stagesSorted.forEach(stage => {
+    const counts = {};
+    pastPerformances.filter(p => p.stage.replace(targetGroup, '').trim() === stage).forEach(p => {
+      p.members.forEach(m => counts[m] = (counts[m] || 0) + 1);
     });
-    stageRanking[stageName] = sortRankingWithTies(
-      Object.entries(countMap).map(([name, count]) => ({ name, count })),
-      allMembers
+    stageRanking[stage] = sortRankingWithTies(
+      Object.entries(counts).map(([name, count]) => ({ name, count })),
+      combinedMembers
     ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
   });
 
-  // 年別出演回数集計
+  // 年別出演回数
   const yearCounts = {};
   memberPast.forEach(p => {
-    const year = p.date.slice(0,4);
-    yearCounts[year] = (yearCounts[year] || 0) + 1;
+    const y = p.date.slice(0, 4);
+    yearCounts[y] = (yearCounts[y] || 0) + 1;
   });
   const yearRows = Object.entries(yearCounts)
-    .sort((a,b) => b[0].localeCompare(a[0]))
+    .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([year, count]) => [`${year}年`, `${count}回`]);
 
-  // 年別出演回数ランキング
+  // 年別出演回数ランキング（combinedMembersでソート）
   const yearRanking = {};
   Object.keys(yearCounts).forEach(year => {
-    const countMap = {};
-    past.filter(p => p.date.startsWith(year)).forEach(p => {
-      p.members.forEach(m => {
-        countMap[m] = (countMap[m] || 0) + 1;
-      });
+    const counts = {};
+    pastPerformances.filter(p => p.date.startsWith(year)).forEach(p => {
+      p.members.forEach(m => counts[m] = (counts[m] || 0) + 1);
     });
     yearRanking[year] = sortRankingWithTies(
-      Object.entries(countMap).map(([name, count]) => ({ name, count })),
-      allMembers
+      Object.entries(counts).map(([name, count]) => ({ name, count })),
+      combinedMembers
     ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
   });
 
-  // HTML出力
   let html = `<div class="highlight">総出演回数：${totalCount}回</div>`;
+
   if (remaining > 0 && remaining <= 10) {
-    html += `
-      <div style="font-size:1rem; color:#000; margin-top:-8px; margin-bottom:2px;">
-        ${nextMilestone}回公演まで あと${remaining}回
-      </div>
-    `;
+    html += `<div style="font-size:1rem;color:#000;margin-top:-8px;margin-bottom:2px;">
+      ${nextMilestone}回公演まで あと${remaining}回
+    </div>`;
     if (milestoneFutureEvent) {
       const label = milestoneFutureEvent.time
-        ? `${milestoneFutureEvent.date} の ${milestoneFutureEvent.stage.replace(selectedGroup, '').trim()}（${milestoneFutureEvent.time}）`
-        : `${milestoneFutureEvent.date} の ${milestoneFutureEvent.stage.replace(selectedGroup, '').trim()}`;
-      html += `
-        <div style="font-size:1rem; color:#000; margin-top:0; margin-bottom:8px;">
-          ${label} で達成予定
-        </div>
-      `;
+        ? `${milestoneFutureEvent.date} の ${milestoneFutureEvent.stage.replace(targetGroup, '').trim()}（${milestoneFutureEvent.time}）`
+        : `${milestoneFutureEvent.date} の ${milestoneFutureEvent.stage.replace(targetGroup, '').trim()}`;
+      html += `<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">${label} で達成予定</div>`;
     }
   }
 
