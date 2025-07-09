@@ -142,8 +142,8 @@ function onMemberChange() {
 
   const historyRows = memberPast
     .sort((a, b) => {
-      if (a.date !== b.date) return b.date.localeCompare(a.date);
-      const timeOrder = { '昼': 0, '夜': 1 };
+      if (a.date !== b.date) return b.date.localeCompare(a.date); // 降順（新しい日が先）
+      const timeOrder = { '夜': 0, '昼': 1 }; // 夜を先に（夜が新しい）
       const aTime = timeOrder[a.time] ?? 2;
       const bTime = timeOrder[b.time] ?? 2;
       return aTime - bTime;
