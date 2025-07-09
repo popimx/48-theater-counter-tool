@@ -142,8 +142,8 @@ function onMemberChange() {
 
   const historyRows = memberPast
     .sort((a, b) => {
-      if (a.date !== b.date) return b.date.localeCompare(a.date); // 降順（新しい日が先）
-      const timeOrder = { '夜': 0, '昼': 1 }; // 夜を先に（夜が新しい）
+      if (a.date !== b.date) return b.date.localeCompare(a.date); // 降順（日付）
+      const timeOrder = { '夜': 0, '昼': 1 }; // 夜を新しく
       const aTime = timeOrder[a.time] ?? 2;
       const bTime = timeOrder[b.time] ?? 2;
       return aTime - bTime;
@@ -226,9 +226,21 @@ function onMemberChange() {
   }
 
   html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows)}`;
-  html += `<h3>演目別出演回数ランキング</h3>${stagesSorted.map(stage => `<details><summary>${stage}</summary>${createTableHTML(['順位', '名前', '回数'], stageRanking[stage])}</details>`).join('')}`;
+  html += `<h3>演目別出演回数ランキング</h3>${
+    stagesSorted.map(stage =>
+      `<details><summary>${stage}</summary>${createTableHTML(['順位', '名前', '回数'], stageRanking[stage])}</details>`
+    ).join('')}`;
+
   html += `<h3>年別出演回数</h3>${createTableHTML(['年', '回数'], yearRows)}`;
-  html += `<h3>年別出演回数ランキング</h3>${Object.entries(yearRanking).map(([year, rows]) => `<details><summary>${year}年</summary>${createTableHTML(['順位', '名前', '回数'], rows)}</details>`).join('')}`;
+
+  html += `<h3>年別出演回数ランキング</h3>${
+    Object.entries(yearRanking)
+      .sort((a, b) => b[0].localeCompare(a[0])) // 年の降順
+      .map(([year, rows]) =>
+        `<details><summary>${year}年</summary>${createTableHTML(['順位', '名前', '回数'], rows)}</details>`
+      ).join('')
+  }`;
+
   html += `<h3>共演回数ランキング</h3>${createTableHTML(['順位', '名前', '回数'], coRanking)}`;
 
   output.innerHTML = html;
