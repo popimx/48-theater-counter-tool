@@ -114,8 +114,17 @@ function onMemberChange() {
   const pastPerformances = relevantPerformances.filter(p => p.date <= todayStr);
   const futurePerformances = relevantPerformances.filter(p => p.date > todayStr);
 
-  const memberPast = pastPerformances.filter(p => p.members.includes(member));
+  const memberPast = pastPerformances
+    .map((p, i) => ({ ...p, __index: performances.indexOf(p) }))
+    .filter(p => p.members.includes(member))
+    .sort((a, b) => a.__index - b.__index);
+
   const totalCount = memberPast.length;
+
+  const memberFuture = futurePerformances
+    .map((p, i) => ({ ...p, __index: performances.indexOf(p) }))
+    .filter(p => p.members.includes(member))
+    .sort((a, b) => a.__index - b.__index);
 
   const nextMilestone = Math.ceil(totalCount / 100) * 100;
   const remaining = nextMilestone - totalCount;
@@ -123,7 +132,7 @@ function onMemberChange() {
   let milestoneFutureEvent = null;
   if (remaining > 0 && remaining <= 10) {
     let count = totalCount;
-    for (const perf of futurePerformances.filter(p => p.members.includes(member))) {
+    for (const perf of memberFuture) {
       if (++count >= nextMilestone) {
         milestoneFutureEvent = perf;
         break;
@@ -141,21 +150,14 @@ function onMemberChange() {
   }
 
   const historyRows = memberPast
-    .map((p, i) => ({ ...p, __index: performances.indexOf(p) }))
-    .sort((a, b) => {
-      if (a.date !== b.date) return b.date.localeCompare(a.date);
-      const timeOrder = { '夜': 0, '昼': 1 };
-      const aTime = timeOrder[a.time] ?? 2;
-      const bTime = timeOrder[b.time] ?? 2;
-      if (aTime !== bTime) return aTime - bTime;
-      return a.__index - b.__index;
-    })
-    .map((p, i, arr) => [arr.length - i, p.date, p.stage.replace(targetGroup, '').trim(), p.time || '']);
+    .map((p, i) => ({ ...p, count: i + 1 }))
+    .sort((a, b) => b.count - a.count)
+    .map(p => [p.count, p.date, p.stage.replace(targetGroup, '').trim(), p.time || '']);
 
-  const memberFuture = futurePerformances.filter(p => p.members.includes(member));
-  const futureRows = memberFuture
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map(p => [p.date, p.stage.replace(targetGroup, '').trim(), p.time || '']);
+  const futureRows = memberFuture.map((p, i) => {
+    const count = totalCount + i + 1;
+    return [count, p.date, p.stage.replace(targetGroup, '').trim(), p.time || ''];
+  });
 
   const stageCountMap = {};
   memberPast.forEach(p => {
@@ -234,7 +236,7 @@ function onMemberChange() {
   html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows)}`;
 
   if (futureRows.length > 0) {
-    html += `<h3>今後の出演予定</h3>${createTableHTML(['日付', '演目', '時間'], futureRows)}`;
+    html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows)}`;
   }
 
   if (milestones.length > 0) {
