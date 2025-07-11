@@ -149,15 +149,20 @@ function onMemberChange() {
     }
   }
 
+  // 回数降順で節目達成日ソート
+  const sortedMilestones = milestones.sort((a, b) => b.milestone - a.milestone);
+
   const historyRows = memberPast
     .map((p, i) => ({ ...p, count: i + 1 }))
     .sort((a, b) => b.count - a.count)
     .map(p => [p.count, p.date, p.stage.replace(targetGroup, '').trim(), p.time || '']);
 
+  // 今後の出演予定も回数降順に
   const futureRows = memberFuture.map((p, i) => {
     const count = totalCount + i + 1;
-    return [count, p.date, p.stage.replace(targetGroup, '').trim(), p.time || ''];
-  });
+    return { count, date: p.date, stage: p.stage.replace(targetGroup, '').trim(), time: p.time || '' };
+  }).sort((a, b) => b.count - a.count)
+    .map(p => [p.count, p.date, p.stage, p.time]);
 
   const stageCountMap = {};
   memberPast.forEach(p => {
@@ -239,8 +244,8 @@ function onMemberChange() {
     html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows)}`;
   }
 
-  if (milestones.length > 0) {
-    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], milestones.map(m => [`${m.milestone}回`, m.date, m.stage]))}`;
+  if (sortedMilestones.length > 0) {
+    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]))}`;
   }
 
   html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows)}`;
