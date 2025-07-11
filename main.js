@@ -141,14 +141,21 @@ function onMemberChange() {
   }
 
   const historyRows = memberPast
+    .map((p, i) => ({ ...p, __index: performances.indexOf(p) }))
     .sort((a, b) => {
-      if (a.date !== b.date) return b.date.localeCompare(a.date); // 降順（日付）
-      const timeOrder = { '夜': 0, '昼': 1 }; // 夜を新しく
+      if (a.date !== b.date) return b.date.localeCompare(a.date);
+      const timeOrder = { '夜': 0, '昼': 1 };
       const aTime = timeOrder[a.time] ?? 2;
       const bTime = timeOrder[b.time] ?? 2;
-      return aTime - bTime;
+      if (aTime !== bTime) return aTime - bTime;
+      return a.__index - b.__index;
     })
     .map((p, i, arr) => [arr.length - i, p.date, p.stage.replace(targetGroup, '').trim(), p.time || '']);
+
+  const memberFuture = futurePerformances.filter(p => p.members.includes(member));
+  const futureRows = memberFuture
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(p => [p.date, p.stage.replace(targetGroup, '').trim(), p.time || '']);
 
   const stageCountMap = {};
   memberPast.forEach(p => {
@@ -212,14 +219,23 @@ function onMemberChange() {
       ${nextMilestone}回公演まで あと${remaining}回
     </div>`;
     if (milestoneFutureEvent) {
+      const dateObj = new Date(milestoneFutureEvent.date);
+      const mm = dateObj.getMonth() + 1;
+      const dd = dateObj.getDate();
+      const dateStr = `${mm}月${dd}日`;
+      const stageName = milestoneFutureEvent.stage.replace(targetGroup, '').trim();
       const label = milestoneFutureEvent.time
-        ? `${milestoneFutureEvent.date} の ${milestoneFutureEvent.stage.replace(targetGroup, '').trim()}（${milestoneFutureEvent.time}）`
-        : `${milestoneFutureEvent.date} の ${milestoneFutureEvent.stage.replace(targetGroup, '').trim()}`;
+        ? `${dateStr} の ${stageName}（${milestoneFutureEvent.time}）`
+        : `${dateStr} の ${stageName}`;
       html += `<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">${label} で達成予定</div>`;
     }
   }
 
   html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows)}`;
+
+  if (futureRows.length > 0) {
+    html += `<h3>今後の出演予定</h3>${createTableHTML(['日付', '演目', '時間'], futureRows)}`;
+  }
 
   if (milestones.length > 0) {
     html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], milestones.map(m => [`${m.milestone}回`, m.date, m.stage]))}`;
@@ -235,7 +251,7 @@ function onMemberChange() {
 
   html += `<h3>年別出演回数ランキング</h3>${
     Object.entries(yearRanking)
-      .sort((a, b) => b[0].localeCompare(a[0])) // 年の降順
+      .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([year, rows]) =>
         `<details><summary>${year}年</summary>${createTableHTML(['順位', '名前', '回数'], rows)}</details>`
       ).join('')
