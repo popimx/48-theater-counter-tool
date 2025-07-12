@@ -221,7 +221,7 @@ function onMemberChange() {
 
   if (remaining > 0 && remaining <= 10) {
     html += `<div style="font-size:1rem;color:#000;margin-top:-8px;margin-bottom:2px;">
-      ${nextMilestone}回公演まで あと${remaining}回
+      ${nextMilestone}回公演まであと ${remaining}回
     </div>`;
     if (milestoneFutureEvent) {
       const dateObj = new Date(milestoneFutureEvent.date);
