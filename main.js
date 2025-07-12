@@ -115,14 +115,14 @@ function onMemberChange() {
   const futurePerformances = relevantPerformances.filter(p => p.date > todayStr);
 
   const memberPast = pastPerformances
-    .map((p, i) => ({ ...p, __index: performances.indexOf(p) }))
+    .map(p => ({ ...p, __index: performances.indexOf(p) }))
     .filter(p => p.members.includes(member))
     .sort((a, b) => a.__index - b.__index);
 
   const totalCount = memberPast.length;
 
   const memberFuture = futurePerformances
-    .map((p, i) => ({ ...p, __index: performances.indexOf(p) }))
+    .map(p => ({ ...p, __index: performances.indexOf(p) }))
     .filter(p => p.members.includes(member))
     .sort((a, b) => a.__index - b.__index);
 
@@ -144,12 +144,11 @@ function onMemberChange() {
   for (let m = 100; m <= totalCount; m += 100) {
     const perf = memberPast[m - 1];
     if (perf) {
-      let stageName = perf.stage.replace(targetGroup, '').trim();
+      const stageName = perf.stage.replace(targetGroup, '').trim();
       milestones.push({ date: perf.date, stage: stageName, milestone: m });
     }
   }
 
-  // 回数降順で節目達成日ソート
   const sortedMilestones = milestones.sort((a, b) => b.milestone - a.milestone);
 
   const historyRows = memberPast
@@ -157,7 +156,6 @@ function onMemberChange() {
     .sort((a, b) => b.count - a.count)
     .map(p => [p.count, p.date, p.stage.replace(targetGroup, '').trim(), p.time || '']);
 
-  // 今後の出演予定も回数降順に
   const futureRows = memberFuture.map((p, i) => {
     const count = totalCount + i + 1;
     return { count, date: p.date, stage: p.stage.replace(targetGroup, '').trim(), time: p.time || '' };
@@ -231,10 +229,9 @@ function onMemberChange() {
       const dd = dateObj.getDate();
       const dateStr = `${mm}月${dd}日`;
       const stageName = milestoneFutureEvent.stage.replace(targetGroup, '').trim();
-      const label = milestoneFutureEvent.time
-        ? `${dateStr} の ${stageName}（${milestoneFutureEvent.time}）`
-        : `${dateStr} の ${stageName}`;
-      html += `<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">${label} で達成予定</div>`;
+      html += `<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">
+        ${dateStr}の ${stageName}公演 で達成予定
+      </div>`;
     }
   }
 
