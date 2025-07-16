@@ -98,16 +98,6 @@
     details[open] summary {
       color: #1976d2;
     }
-
-    /* 12文字以上の演目名にのみ適用、省略表示 */
-    .ellipsis {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
-      display: inline-block;
-      vertical-align: bottom;
-    }
   </style>
 </head>
 <body>
@@ -132,28 +122,6 @@
     if (script) {
       const now = Date.now();
       script.src = `main.js?t=${now}`;
-    }
-
-    // createTableHTML関数の例（main.js内に同様のものがある場合、同じ修正をお願いします）
-    // 演目名(3列目=インデックス2)が12文字以上の場合に省略表示し、title属性に全文をセット
-    function createTableHTML(headers, rows) {
-      return `
-        <table>
-          <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-          <tbody>
-            ${rows.map(row => {
-              return `<tr>${
-                row.map((cell, i) => {
-                  if (i === 2 && cell.length >= 12) {
-                    return `<td class="ellipsis" title="${cell}">${cell}</td>`;
-                  }
-                  return `<td>${cell}</td>`;
-                }).join('')
-              }</tr>`;
-            }).join('')}
-          </tbody>
-        </table>
-      `;
     }
   </script>
 </body>
