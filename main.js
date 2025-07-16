@@ -4,6 +4,7 @@ const PERFORMANCE_URL = './src/data/performance.json';
 let groups = {};
 let performances = [];
 
+// 卒業生グループを通常のグループとまとめて扱うためのエイリアス
 const GROUP_ALIAS = {
   'AKB48 卒業生': 'AKB48',
   'SKE48 卒業生': 'SKE48',
@@ -13,10 +14,12 @@ const GROUP_ALIAS = {
   'STU48 卒業生': 'STU48'
 };
 
+// HTML 要素の取得
 const groupSelect = document.getElementById('group-select');
 const memberSelect = document.getElementById('member-select');
 const output = document.getElementById('output');
 
+// 今日の日付を YYYY-MM-DD 形式で取得する
 function getTodayString() {
   const today = new Date();
   const yyyy = today.getFullYear();
@@ -25,18 +28,28 @@ function getTodayString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// groups.json の取得
 async function fetchGroups() {
   const res = await fetch(GROUPS_URL);
   if (!res.ok) throw new Error('groups.jsonの取得に失敗しました');
   groups = await res.json();
 }
 
+// performance.json の取得と日付＋時間の昇順でソート
 async function fetchPerformances() {
   const res = await fetch(PERFORMANCE_URL);
   if (!res.ok) throw new Error('performance.jsonの取得に失敗しました');
-  performances = await res.json();
+  const raw = await res.json();
+  
+  // 時間を比較用に ""→0, "昼"→1, "夜"→2 としてソート
+  const timeOrder = { "": 0, "昼": 1, "夜": 2 };
+  performances = raw.sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return (timeOrder[a.time] ?? 0) - (timeOrder[b.time] ?? 0);
+  });
 }
 
+// グループ選択肢を初期化
 function setupGroupOptions() {
   Object.keys(groups).forEach(group => {
     const opt = document.createElement('option');
@@ -46,6 +59,7 @@ function setupGroupOptions() {
   });
 }
 
+// グループ変更時の処理（メンバー一覧更新）
 function onGroupChange() {
   const selectedGroup = groupSelect.value;
   memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
@@ -62,6 +76,7 @@ function onGroupChange() {
   });
 }
 
+// テーブルHTMLを生成
 function createTableHTML(headers, rows) {
   return `
     <table>
@@ -71,6 +86,7 @@ function createTableHTML(headers, rows) {
   `;
 }
 
+// 同順位対応のランキングを作成
 function sortRankingWithTies(arr, groupList = []) {
   arr.sort((a, b) => {
     if (b.count !== a.count) return b.count - a.count;
@@ -92,6 +108,7 @@ function sortRankingWithTies(arr, groupList = []) {
   return arr;
 }
 
+// メンバー変更時の処理（すべての表示を構成）
 function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
@@ -266,6 +283,7 @@ function onMemberChange() {
   output.innerHTML = html;
 }
 
+// 初期化処理：グループと公演データの読み込み、イベントリスナー設定
 async function init() {
   try {
     await fetchGroups();
@@ -280,4 +298,5 @@ async function init() {
   }
 }
 
+// ページロード時に初期化
 window.addEventListener('DOMContentLoaded', init);
