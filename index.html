@@ -78,6 +78,13 @@
       background-color: #f2f2f2;
     }
 
+    /* 演目名（3列目）だけ省略表示に */
+    table td:nth-child(3) {
+      white-space: nowrap;       /* 改行しない */
+      overflow: hidden;          /* はみ出し部分隠す */
+      text-overflow: ellipsis;   /* 省略表示 */
+    }
+
     .highlight {
       font-weight: bold;
       color: #1976d2;
