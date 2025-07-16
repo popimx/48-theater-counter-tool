@@ -1,11 +1,9 @@
-// グループ一覧と公演データのJSONパス（performance.jsonにはキャッシュ防止のクエリを追加）
 const GROUPS_URL = './src/data/groups.json';
-const PERFORMANCE_URL = './src/data/performance.json?' + Date.now(); // 毎回異なるURLでキャッシュを無効化
+const PERFORMANCE_URL = './src/data/performance.json?' + Date.now();
 
-let groups = {};         // グループとメンバー一覧を格納
-let performances = [];   // 公演データを格納
+let groups = {};
+let performances = [];
 
-// 卒業生グループを通常グループに紐づけるエイリアス
 const GROUP_ALIAS = {
   'AKB48 卒業生': 'AKB48',
   'SKE48 卒業生': 'SKE48',
@@ -15,12 +13,10 @@ const GROUP_ALIAS = {
   'STU48 卒業生': 'STU48'
 };
 
-// HTMLの各要素を取得
 const groupSelect = document.getElementById('group-select');
 const memberSelect = document.getElementById('member-select');
 const output = document.getElementById('output');
 
-// 今日の日付を YYYY-MM-DD の形式で返す
 function getTodayString() {
   const today = new Date();
   const yyyy = today.getFullYear();
@@ -29,23 +25,21 @@ function getTodayString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// groups.json を取得して groups に保存
+function truncateStageName(stageName) {
+  return stageName.length > 11 ? stageName.slice(0, 10) + '…' : stageName;
+}
+
 async function fetchGroups() {
   const res = await fetch(GROUPS_URL);
   if (!res.ok) throw new Error('groups.jsonの取得に失敗しました');
   groups = await res.json();
 }
 
-// performance.json を取得してソートし performances に保存
 async function fetchPerformances() {
   const res = await fetch(PERFORMANCE_URL);
   if (!res.ok) throw new Error('performance.jsonの取得に失敗しました');
   const raw = await res.json();
-
-  // 時間順の定義（空→昼→夜）
   const timeOrder = { "": 0, "昼": 1, "夜": 2 };
-
-  // メンバー・時間をトリムして、日付＋時間の昇順に並び替え
   performances = raw.map(p => ({
     ...p,
     members: p.members.map(m => m.trim()),
@@ -56,7 +50,6 @@ async function fetchPerformances() {
   });
 }
 
-// グループセレクトの選択肢を構築
 function setupGroupOptions() {
   Object.keys(groups).forEach(group => {
     const opt = document.createElement('option');
@@ -66,7 +59,6 @@ function setupGroupOptions() {
   });
 }
 
-// グループ変更時にメンバーセレクトを更新
 function onGroupChange() {
   const selectedGroup = groupSelect.value;
   memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
@@ -83,7 +75,6 @@ function onGroupChange() {
   });
 }
 
-// HTMLテーブルを作成
 function createTableHTML(headers, rows) {
   return `
     <table>
@@ -93,7 +84,6 @@ function createTableHTML(headers, rows) {
   `;
 }
 
-// 順位付きランキングを作成（同数は同順位）
 function sortRankingWithTies(arr, groupList = []) {
   arr.sort((a, b) => {
     if (b.count !== a.count) return b.count - a.count;
@@ -115,7 +105,6 @@ function sortRankingWithTies(arr, groupList = []) {
   return arr;
 }
 
-// メンバー変更時に詳細表示
 function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
@@ -173,19 +162,24 @@ function onMemberChange() {
   for (let m = 100; m <= totalCount; m += 100) {
     const perf = memberPast[m - 1];
     if (perf) {
-      const stageName = perf.stage.replace(targetGroup, '').trim();
+      const stageName = truncateStageName(perf.stage.replace(targetGroup, '').trim());
       milestones.push({ date: perf.date, stage: stageName, milestone: m });
     }
   }
   const sortedMilestones = milestones.sort((a, b) => b.milestone - a.milestone);
 
   const historyRows = memberPast.slice().sort((a, b) => b.count - a.count)
-    .map(p => [p.count, p.date, p.stage.replace(targetGroup, '').trim(), p.time || '']);
+    .map(p => [
+      p.count,
+      p.date,
+      truncateStageName(p.stage.replace(targetGroup, '').trim()),
+      p.time || ''
+    ]);
 
   const futureRows = memberFuture.map((p, i) => [
     totalCount + i + 1,
     p.date,
-    p.stage.replace(targetGroup, '').trim(),
+    truncateStageName(p.stage.replace(targetGroup, '').trim()),
     p.time || ''
   ]);
 
@@ -255,7 +249,7 @@ function onMemberChange() {
       const mm = dateObj.getMonth() + 1;
       const dd = dateObj.getDate();
       const dateStr = `${mm}月${dd}日`;
-      const stageName = milestoneFutureEvent.stage.replace(targetGroup, '').trim();
+      const stageName = truncateStageName(milestoneFutureEvent.stage.replace(targetGroup, '').trim());
       html += `<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">
         ${dateStr}の ${stageName}公演 で達成予定
       </div>`;
@@ -286,8 +280,7 @@ function onMemberChange() {
   output.innerHTML = html;
 }
 
-// 初期化処理（データ取得とイベント設定）
-async function init() {
+window.addEventListener('DOMContentLoaded', async () => {
   try {
     await fetchGroups();
     await fetchPerformances();
@@ -299,7 +292,4 @@ async function init() {
     groupSelect.disabled = true;
     memberSelect.disabled = true;
   }
-}
-
-// ページ読み込み時に初期化を実行
-window.addEventListener('DOMContentLoaded', init);
+});
