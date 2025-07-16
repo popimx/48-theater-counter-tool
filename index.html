@@ -66,14 +66,12 @@
       border-collapse: collapse;
       margin-bottom: 0.75rem;
       font-size: 0.95rem;
-      table-layout: fixed;
     }
 
     th, td {
       border: 1px solid #ccc;
       padding: 4px 6px;
       text-align: left;
-      word-wrap: break-word;
     }
 
     thead {
@@ -99,14 +97,6 @@
 
     details[open] summary {
       color: #1976d2;
-    }
-
-    /* ← 追加部分：演目列だけに適用 */
-    td.nowrap {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 180px; /* 必要に応じて調整 */
     }
   </style>
 </head>
