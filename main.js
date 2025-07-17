@@ -213,8 +213,9 @@ function onMemberChange() {
     combinedMembers
   ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
 
-  // 共演履歴（公演一覧）作成（最新が上、回数は共演回数と一致）
-  const coHistoryHtml = Object.entries(coCounts).map(([coMember, count]) => {
+  // 共演履歴（公演一覧）作成（共演回数ランキングの順位順に）
+  const coHistoryHtml = coRanking.map(([rankStr, coMember, countStr]) => {
+    const count = parseInt(countStr);
     const coPerformances = memberPast
       .filter(p => p.members.includes(coMember))
       .sort((a, b) => {
@@ -229,7 +230,7 @@ function onMemberChange() {
     ]);
     return `
       <details>
-        <summary>▶ ${coMember}</summary>
+        <summary>${coMember}</summary>
         ${createTableHTML(['回数', '日付', '演目', '時間'], rows)}
       </details>
     `;
@@ -307,7 +308,7 @@ function onMemberChange() {
       ).join('')
   }`;
 
-  // ここで「共演回数ランキング」と「共演履歴」を続けて表示
+  // 「共演回数ランキング」と「共演履歴」を共演回数順に連動表示
   html += `<h3>共演回数ランキング</h3>${createTableHTML(['順位', '名前', '回数'], coRanking)}`;
   html += `<h3>共演履歴</h3>${coHistoryHtml}`;
 
