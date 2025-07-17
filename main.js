@@ -168,14 +168,18 @@ function onMemberChange() {
   }
   const sortedMilestones = milestones.sort((a, b) => b.milestone - a.milestone);
 
-  const historyRows = memberPast.slice().sort((a, b) => b.count - a.count)
-    .map(p => [
-      p.count,
-      p.date,
-      truncateStageName(p.stage.replace(targetGroup, '').trim()),
-      p.time || ''
-    ]);
+  // 出演履歴テーブル作成（最新が上）
+  const historyRows = memberPast.slice().sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return (timeOrder[b.time] ?? 0) - (timeOrder[a.time] ?? 0);
+  }).map(p => [
+    p.count,
+    p.date,
+    truncateStageName(p.stage.replace(targetGroup, '').trim()),
+    p.time || ''
+  ]);
 
+  // 今後の出演予定テーブル
   const futureRows = memberFuture.map((p, i) => [
     totalCount + i + 1,
     p.date,
@@ -183,15 +187,18 @@ function onMemberChange() {
     p.time || ''
   ]);
 
+  // 演目別出演回数マップ
   const stageCountMap = {};
   memberPast.forEach(p => {
     const stageName = p.stage.replace(targetGroup, '').trim();
     stageCountMap[stageName] = (stageCountMap[stageName] || 0) + 1;
   });
+
   const stageRows = Object.entries(stageCountMap)
     .sort((a, b) => b[1] - a[1])
     .map(([stage, count]) => [stage, `${count}回`]);
 
+  // 共演回数計算
   const coCounts = {};
   memberPast.forEach(p => {
     p.members.forEach(m => {
@@ -199,24 +206,36 @@ function onMemberChange() {
       coCounts[m] = (coCounts[m] || 0) + 1;
     });
   });
+
+  // 共演回数ランキング
   const coRanking = sortRankingWithTies(
     Object.entries(coCounts).map(([name, count]) => ({ name, count })),
     combinedMembers
   ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
 
-  const stagesSorted = Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a]);
-  const stageRanking = {};
-  stagesSorted.forEach(stage => {
-    const counts = {};
-    pastPerformances.filter(p => p.stage.replace(targetGroup, '').trim() === stage).forEach(p => {
-      p.members.forEach(m => counts[m] = (counts[m] || 0) + 1);
-    });
-    stageRanking[stage] = sortRankingWithTies(
-      Object.entries(counts).map(([name, count]) => ({ name, count })),
-      combinedMembers
-    ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
-  });
+  // 共演履歴（公演一覧）作成（最新が上、回数は共演回数と一致）
+  const coHistoryHtml = Object.entries(coCounts).map(([coMember, count]) => {
+    const coPerformances = memberPast
+      .filter(p => p.members.includes(coMember))
+      .sort((a, b) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return (timeOrder[b.time] ?? 0) - (timeOrder[a.time] ?? 0);
+      });
+    const rows = coPerformances.map((p, i) => [
+      count - i,  // 共演回数からiを引く（最新公演がcount）
+      p.date,
+      truncateStageName(p.stage.replace(targetGroup, '').trim()),
+      p.time || ''
+    ]);
+    return `
+      <details>
+        <summary>▶ ${coMember}</summary>
+        ${createTableHTML(['回数', '日付', '演目', '時間'], rows)}
+      </details>
+    `;
+  }).join('');
 
+  // 年別出演回数
   const yearCounts = {};
   memberPast.forEach(p => {
     const y = p.date.slice(0, 4);
@@ -226,6 +245,7 @@ function onMemberChange() {
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([year, count]) => [`${year}年`, `${count}回`]);
 
+  // 年別出演回数ランキング
   const yearRanking = {};
   Object.keys(yearCounts).forEach(year => {
     const counts = {};
@@ -238,6 +258,7 @@ function onMemberChange() {
     ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
   });
 
+  // HTML組み立て
   let html = `<div class="highlight">総出演回数：${totalCount}回</div>`;
 
   if (remaining > 0 && remaining <= 10) {
@@ -265,9 +286,19 @@ function onMemberChange() {
   }
   html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows)}`;
   html += `<h3>演目別出演回数ランキング</h3>${
-    stagesSorted.map(stage =>
-      `<details><summary>${stage}</summary>${createTableHTML(['順位', '名前', '回数'], stageRanking[stage])}</details>`
-    ).join('')}`;
+    Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a])
+    .map(stage =>
+      `<details><summary>${stage}</summary>${createTableHTML(['順位', '名前', '回数'], (function(){
+        const counts = {};
+        pastPerformances.filter(p => p.stage.replace(targetGroup, '').trim() === stage)
+          .forEach(p => p.members.forEach(m => counts[m] = (counts[m] || 0) + 1));
+        return sortRankingWithTies(
+          Object.entries(counts).map(([name, count]) => ({ name, count })),
+          combinedMembers
+        ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
+      })())}</details>`
+    ).join('')
+  }`;
   html += `<h3>年別出演回数</h3>${createTableHTML(['年', '回数'], yearRows)}`;
   html += `<h3>年別出演回数ランキング</h3>${
     Object.entries(yearRanking).sort((a, b) => b[0].localeCompare(a[0]))
@@ -275,7 +306,10 @@ function onMemberChange() {
         `<details><summary>${year}年</summary>${createTableHTML(['順位', '名前', '回数'], rows)}</details>`
       ).join('')
   }`;
+
+  // ここで「共演回数ランキング」と「共演履歴」を続けて表示
   html += `<h3>共演回数ランキング</h3>${createTableHTML(['順位', '名前', '回数'], coRanking)}`;
+  html += `<h3>共演履歴</h3>${coHistoryHtml}`;
 
   output.innerHTML = html;
 }
