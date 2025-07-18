@@ -29,6 +29,11 @@ function truncateStageName(stageName) {
   return stageName.length > 11 ? stageName.slice(0, 10) + '…' : stageName;
 }
 
+// 18文字以上は省略して17文字目に「…」を付ける
+function truncateStageNameLong(name) {
+  return name.length > 18 ? name.slice(0, 17) + '…' : name;
+}
+
 async function fetchGroups() {
   const res = await fetch(GROUPS_URL);
   if (!res.ok) throw new Error('groups.jsonの取得に失敗しました');
@@ -102,13 +107,11 @@ function sortRankingWithTies(arr, groupList = []) {
   return arr;
 }
 
-// 日付降順、新しい順。日付同じ場合はindex降順（performance.json登録順の逆）
 function sortByDateDescendingWithIndex(a, b) {
   if (a.date !== b.date) return b.date.localeCompare(a.date);
   return b.index - a.index;
 }
 
-// 日付昇順、古い順。日付同じ場合はindex昇順（performance.json登録順）
 function sortByDateAscendingWithIndex(a, b) {
   if (a.date !== b.date) return a.date.localeCompare(b.date);
   return a.index - b.index;
@@ -190,9 +193,10 @@ function onMemberChange() {
     stageCountMap[stageName] = (stageCountMap[stageName] || 0) + 1;
   });
 
+  // 演目別出演回数で18文字以上の演目名を省略して表示
   const stageRows = Object.entries(stageCountMap)
     .sort((a, b) => b[1] - a[1])
-    .map(([stage, count]) => [stage, `${count}回`]);
+    .map(([stage, count]) => [truncateStageNameLong(stage), `${count}回`]);
 
   const coCounts = {};
   memberPast.forEach(p => {
