@@ -31,7 +31,7 @@ function truncateStageName(stageName) {
 
 // 18文字以上は省略して17文字目に「…」を付ける
 function truncateStageNameLong(name) {
-  return name.length > 22 ? name.slice(0, 21) + '…' : name;
+  return name.length > 20 ? name.slice(0, 19) + '…' : name;
 }
 
 async function fetchGroups() {
