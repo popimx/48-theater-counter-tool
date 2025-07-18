@@ -102,11 +102,13 @@ function sortRankingWithTies(arr, groupList = []) {
   return arr;
 }
 
+// 日付降順、新しい順。日付同じ場合はindex降順（performance.json登録順の逆）
 function sortByDateDescendingWithIndex(a, b) {
   if (a.date !== b.date) return b.date.localeCompare(a.date);
   return b.index - a.index;
 }
 
+// 日付昇順、古い順。日付同じ場合はindex昇順（performance.json登録順）
 function sortByDateAscendingWithIndex(a, b) {
   if (a.date !== b.date) return a.date.localeCompare(b.date);
   return a.index - b.index;
