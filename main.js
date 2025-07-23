@@ -1,7 +1,7 @@
 const GROUPS_URL = './src/data/groups.json';
 
 let groups = {};
-let performancesCache = {}; // グループごとの公演データキャッシュ
+let performances = [];
 
 const GROUP_ALIAS = {
   'AKB48 卒業生': 'AKB48',
@@ -38,33 +38,35 @@ async function fetchGroups() {
   groups = await res.json();
 }
 
-// 指定グループの2005年から今年までの全パフォーマンスJSONを一括読み込みしてキャッシュ
-async function fetchPerformancesForGroup(group) {
-  if (performancesCache[group]) {
-    return performancesCache[group];
-  }
+async function loadPerformanceFiles(group) {
+  performances = [];
+  const baseGroup = group.replace(' 卒業生', '');
   const startYear = 2005;
-  const endYear = new Date().getFullYear();
-  let allPerformances = [];
-  for (let year = startYear; year <= endYear; year++) {
-    const url = `./src/data/performance_${group.toLowerCase()}_${year}.json`;
+  const currentYear = new Date().getFullYear();
+  const fileNames = [];
+
+  for (let y = startYear; y <= currentYear; y++) {
+    fileNames.push(`./src/data/performance_${baseGroup.toLowerCase()}_${y}.json`);
+  }
+
+  for (const url of fileNames) {
     try {
-      const res = await fetch(url);
-      if (!res.ok) continue;
-      const data = await res.json();
-      const normalized = data.map((p, index) => ({
-        ...p,
-        index,
-        members: p.members.map(m => m.trim()),
-        time: (p.time || "").trim()
-      }));
-      allPerformances = allPerformances.concat(normalized);
-    } catch {
-      // 読み込み失敗は無視
+      const res = await fetch(url + '?' + Date.now());
+      if (res.ok) {
+        const raw = await res.json();
+        raw.forEach((p, index) => {
+          performances.push({
+            ...p,
+            index: performances.length + index,
+            members: p.members.map(m => m.trim()),
+            time: (p.time || "").trim()
+          });
+        });
+      }
+    } catch (e) {
+      // ファイルが存在しない場合はスキップ
     }
   }
-  performancesCache[group] = allPerformances;
-  return allPerformances;
 }
 
 function setupGroupOptions() {
@@ -76,7 +78,7 @@ function setupGroupOptions() {
   });
 }
 
-async function onGroupChange() {
+function onGroupChange() {
   const selectedGroup = groupSelect.value;
   memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
   memberSelect.disabled = !selectedGroup;
@@ -90,9 +92,6 @@ async function onGroupChange() {
     opt.textContent = member;
     memberSelect.appendChild(opt);
   });
-
-  // 選択グループの公演データを一括読み込み（キャッシュ利用）
-  await fetchPerformancesForGroup(selectedGroup);
 }
 
 function createTableHTML(headers, rows) {
@@ -138,24 +137,19 @@ function sortByDateAscendingWithIndex(a, b) {
 async function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
-  output.innerHTML = '';
+  output.innerHTML = 'データを読み込み中…';
   if (!selectedGroup || !member) return;
 
-  let targetGroup = selectedGroup;
-  if (selectedGroup.endsWith(' 卒業生')) {
-    targetGroup = selectedGroup.replace(' 卒業生', '');
-  }
+  await loadPerformanceFiles(selectedGroup);
 
+  const targetGroup = selectedGroup.replace(' 卒業生', '');
   const combinedMembers = [
     ...(groups[targetGroup] || []),
     ...(groups[targetGroup + ' 卒業生'] || [])
   ];
 
-  // キャッシュ済みの公演データを利用
-  const allPerformances = performancesCache[targetGroup] || [];
-  const relevantPerformances = allPerformances.filter(p => p.stage.startsWith(targetGroup));
-
   const todayStr = getTodayString();
+  const relevantPerformances = performances.filter(p => p.stage.startsWith(targetGroup));
   const pastPerformances = relevantPerformances.filter(p => p.date <= todayStr);
   const futurePerformances = relevantPerformances.filter(p => p.date > todayStr);
 
