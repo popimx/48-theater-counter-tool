@@ -1,18 +1,10 @@
 const GROUPS_URL = './src/data/groups.json';
-const PERFORMANCE_FILES_URL = './src/data/performance_files.json';
+const FILES_URL = './src/data/performance_files.json';
 
 let groups = {};
 let performanceFiles = {};
 let performances = [];
-
-const GROUP_ALIAS = {
-  'AKB48 卒業生': 'AKB48',
-  'SKE48 卒業生': 'SKE48',
-  'NMB48 卒業生': 'NMB48',
-  'HKT48 卒業生': 'HKT48',
-  'NGT48 卒業生': 'NGT48',
-  'STU48 卒業生': 'STU48'
-};
+let loadedGroup = '';
 
 const groupSelect = document.getElementById('group-select');
 const memberSelect = document.getElementById('member-select');
@@ -20,10 +12,7 @@ const output = document.getElementById('output');
 
 function getTodayString() {
   const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 }
 
 function truncateStageName(name) {
@@ -41,7 +30,7 @@ async function fetchGroups() {
 }
 
 async function fetchPerformanceFiles() {
-  const res = await fetch(PERFORMANCE_FILES_URL);
+  const res = await fetch(FILES_URL);
   if (!res.ok) throw new Error('performance_files.jsonの取得に失敗しました');
   performanceFiles = await res.json();
 }
@@ -56,56 +45,61 @@ function setupGroupOptions() {
 }
 
 function onGroupChange() {
-  const selectedGroup = groupSelect.value;
+  const group = groupSelect.value;
   memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
-  memberSelect.disabled = !selectedGroup;
+  memberSelect.disabled = !group;
   output.innerHTML = '';
 
-  if (!selectedGroup) return;
+  if (!group) return;
 
-  // メンバー選択肢を先に表示
-  const memberList = groups[selectedGroup] || [];
-  memberList.forEach(member => {
+  const members = groups[group] || [];
+  members.forEach(name => {
     const opt = document.createElement('option');
-    opt.value = member;
-    opt.textContent = member;
+    opt.value = name;
+    opt.textContent = name;
     memberSelect.appendChild(opt);
   });
 
-  // 「読み込み中...」を表示しつつ該当performanceファイルを直列読み込み
-  output.innerHTML = `<p style="color:#555;">データを読み込み中...</p>`;
-  loadPerformancesByGroup(selectedGroup).then(() => {
+  output.innerHTML = '<p style="margin:10px 0;">データを読み込み中…</p>';
+  loadGroupPerformances(group).then(() => {
     output.innerHTML = '';
   }).catch(e => {
-    output.innerHTML = `<p style="color:red;">読み込みエラー: ${e.message}</p>`;
+    output.innerHTML = `<p style="color:red;">データ読み込みエラー: ${e.message}</p>`;
   });
 }
 
-async function loadPerformancesByGroup(group) {
-  performances = [];
+async function loadGroupPerformances(group) {
+  if (loadedGroup === group) return;
 
-  // グループのベース名（卒業生→本体）に変換
-  const baseGroup = GROUP_ALIAS[group] || group;
+  const groupKey = group.replace(' 卒業生', '');
+  const relatedFiles = [
+    ...(performanceFiles[groupKey] || []),
+    ...(group.endsWith('卒業生') ? [] : (performanceFiles[group + ' 卒業生'] || []))
+  ];
 
-  // 通常と卒業生を両方読み込む
-  const targets = [baseGroup, `${baseGroup} 卒業生`].filter(g => performanceFiles[g]);
+  const fetchedPerformances = [];
 
-  for (const g of targets) {
-    const fileList = performanceFiles[g];
-    for (const file of fileList) {
+  for (const file of relatedFiles) {
+    try {
       const res = await fetch(`./src/data/${file}`);
-      if (!res.ok) throw new Error(`${file} の取得に失敗しました`);
-      const raw = await res.json();
-      performances.push(
-        ...raw.map((p, index) => ({
-          ...p,
-          index,
-          members: p.members.map(m => m.trim()),
-          time: (p.time || '').trim()
-        }))
-      );
+      if (res.ok) {
+        const json = await res.json();
+        json.forEach((p, idx) => {
+          fetchedPerformances.push({
+            ...p,
+            index: idx,
+            members: p.members.map(m => m.trim()),
+            time: (p.time || '').trim()
+          });
+        });
+      }
+    } catch (e) {
+      console.warn(`${file} の読み込みに失敗:`, e);
     }
   }
+
+  performances = fetchedPerformances;
+  loadedGroup = group;
 }
 
 function sortRankingWithTies(arr, groupList = []) {
@@ -148,67 +142,58 @@ function createTableHTML(headers, rows) {
   `;
 }
 
-async function onMemberChange() {
+function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
-  output.innerHTML = 'データを読み込み中…';
-
+  output.innerHTML = '';
   if (!selectedGroup || !member) return;
 
-  try {
-    await loadPerformancesByGroup(selectedGroup);
-  } catch (e) {
-    output.innerHTML = `<p style="color:red;">データ読み込み失敗: ${e.message}</p>`;
-    return;
-  }
+  const targetGroup = selectedGroup.replace(' 卒業生', '');
+  const todayStr = getTodayString();
 
-  let targetGroup = selectedGroup.replace(' 卒業生', '');
   const combinedMembers = [
     ...(groups[targetGroup] || []),
     ...(groups[targetGroup + ' 卒業生'] || [])
   ];
 
-  const todayStr = getTodayString();
   const relevantPerformances = performances.filter(p => p.stage.startsWith(targetGroup));
-  const pastPerformances = relevantPerformances.filter(p => p.date <= todayStr);
-  const futurePerformances = relevantPerformances.filter(p => p.date > todayStr);
+  const past = relevantPerformances.filter(p => p.date <= todayStr);
+  const future = relevantPerformances.filter(p => p.date > todayStr);
 
-  const memberPast = pastPerformances
-    .filter(p => p.members.includes(member))
-    .sort(sortByDateAscendingWithIndex)
-    .map((p, i) => ({ ...p, count: i + 1 }));
-
+  const memberPast = past.filter(p => p.members.includes(member)).sort(sortByDateAscendingWithIndex);
   const totalCount = memberPast.length;
 
-  const memberFuture = futurePerformances
-    .filter(p => p.members.includes(member))
-    .sort(sortByDateAscendingWithIndex);
+  const memberFuture = future.filter(p => p.members.includes(member)).sort(sortByDateAscendingWithIndex);
 
   const nextMilestone = Math.ceil(totalCount / 100) * 100;
   const remaining = nextMilestone - totalCount;
 
-  let milestoneFutureEvent = null;
+  let milestoneEvent = null;
   if (remaining > 0 && remaining <= 10) {
     let count = totalCount;
-    for (const perf of memberFuture) {
-      if (++count >= nextMilestone) {
-        milestoneFutureEvent = perf;
+    for (const p of memberFuture) {
+      count++;
+      if (count >= nextMilestone) {
+        milestoneEvent = p;
         break;
       }
     }
   }
 
   const milestones = [];
-  for (let m = 100; m <= totalCount; m += 100) {
-    const perf = memberPast[m - 1];
+  for (let i = 100; i <= totalCount; i += 100) {
+    const perf = memberPast[i - 1];
     if (perf) {
-      const stageName = truncateStageName(perf.stage.replace(targetGroup, '').trim());
-      milestones.push({ date: perf.date, stage: stageName, milestone: m });
+      milestones.push({
+        milestone: i,
+        date: perf.date,
+        stage: truncateStageName(perf.stage.replace(targetGroup, '').trim())
+      });
     }
   }
 
-  const historyRows = memberPast.slice().sort(sortByDateDescendingWithIndex).map(p => [
-    p.count,
+  const historyRows = memberPast.slice().reverse().map((p, i) => [
+    totalCount - i,
     p.date,
     truncateStageName(p.stage.replace(targetGroup, '').trim()),
     p.time || ''
@@ -221,21 +206,55 @@ async function onMemberChange() {
     p.time || ''
   ]);
 
-  const stageCountMap = {};
+  const stageCounts = {};
   memberPast.forEach(p => {
-    const stageName = p.stage.replace(targetGroup, '').trim();
-    stageCountMap[stageName] = (stageCountMap[stageName] || 0) + 1;
+    const s = p.stage.replace(targetGroup, '').trim();
+    stageCounts[s] = (stageCounts[s] || 0) + 1;
   });
 
-  const stageRows = Object.entries(stageCountMap)
+  const stageRows = Object.entries(stageCounts)
     .sort((a, b) => b[1] - a[1])
-    .map(([stage, count]) => [truncateStageNameLong(stage), `${count}回`]);
+    .map(([name, count]) => [truncateStageNameLong(name), `${count}回`]);
+
+  const stageRankings = Object.keys(stageCounts).sort((a, b) => stageCounts[b] - stageCounts[a]).map(stage => {
+    const members = {};
+    past.filter(p => p.stage.replace(targetGroup, '').trim() === stage)
+        .forEach(p => p.members.forEach(m => members[m] = (members[m] || 0) + 1));
+    return `
+      <details><summary>${stage}</summary>
+      ${createTableHTML(['順位', '名前', '回数'], sortRankingWithTies(
+        Object.entries(members).map(([name, count]) => ({ name, count })),
+        combinedMembers
+      ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]))}</details>`;
+  }).join('');
+
+  const yearCounts = {};
+  memberPast.forEach(p => {
+    const y = p.date.slice(0, 4);
+    yearCounts[y] = (yearCounts[y] || 0) + 1;
+  });
+
+  const yearRows = Object.entries(yearCounts)
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([y, c]) => [`${y}年`, `${c}回`]);
+
+  const yearRankings = Object.fromEntries(
+    Object.keys(yearCounts).map(year => {
+      const counts = {};
+      past.filter(p => p.date.startsWith(year)).forEach(p => {
+        p.members.forEach(m => counts[m] = (counts[m] || 0) + 1);
+      });
+      return [year, sortRankingWithTies(
+        Object.entries(counts).map(([name, count]) => ({ name, count })),
+        combinedMembers
+      ).map(p => [`${p.rank}位`, p.name, `${p.count}回`])];
+    })
+  );
 
   const coCounts = {};
   memberPast.forEach(p => {
     p.members.forEach(m => {
-      if (m === member) return;
-      coCounts[m] = (coCounts[m] || 0) + 1;
+      if (m !== member) coCounts[m] = (coCounts[m] || 0) + 1;
     });
   });
 
@@ -244,62 +263,24 @@ async function onMemberChange() {
     combinedMembers
   ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
 
-  const coHistoryHtml = coRanking.map(([rankStr, coMember, countStr]) => {
-    const count = parseInt(countStr);
-    const coPerformances = memberPast
-      .filter(p => p.members.includes(coMember))
-      .sort(sortByDateDescendingWithIndex);
-    const rows = coPerformances.map((p, i) => [
-      count - i,
+  const coHistories = coRanking.map(([rank, name, count]) => {
+    const perf = memberPast.filter(p => p.members.includes(name)).sort(sortByDateDescendingWithIndex);
+    const rows = perf.map((p, i) => [
+      parseInt(count) - i,
       p.date,
       truncateStageName(p.stage.replace(targetGroup, '').trim()),
       p.time || ''
     ]);
-    return `
-      <details>
-        <summary>${coMember}</summary>
-        ${createTableHTML(['回数', '日付', '演目', '時間'], rows)}
-      </details>
-    `;
+    return `<details><summary>${name}</summary>${createTableHTML(['回数', '日付', '演目', '時間'], rows)}</details>`;
   }).join('');
-
-  const yearCounts = {};
-  memberPast.forEach(p => {
-    const y = p.date.slice(0, 4);
-    yearCounts[y] = (yearCounts[y] || 0) + 1;
-  });
-  const yearRows = Object.entries(yearCounts)
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .map(([year, count]) => [`${year}年`, `${count}回`]);
-
-  const yearRanking = {};
-  Object.keys(yearCounts).forEach(year => {
-    const counts = {};
-    pastPerformances.filter(p => p.date.startsWith(year)).forEach(p => {
-      p.members.forEach(m => counts[m] = (counts[m] || 0) + 1);
-    });
-    yearRanking[year] = sortRankingWithTies(
-      Object.entries(counts).map(([name, count]) => ({ name, count })),
-      combinedMembers
-    ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
-  });
 
   let html = `<div class="highlight">総出演回数：${totalCount}回</div>`;
 
-  if (remaining > 0 && remaining <= 10) {
-    html += `<div style="font-size:1rem;color:#000;margin-top:-8px;margin-bottom:2px;">
-      ${nextMilestone}回公演まであと${remaining}回
+  if (remaining > 0 && remaining <= 10 && milestoneEvent) {
+    const d = new Date(milestoneEvent.date);
+    html += `<div style="font-size:1rem;color:#000;margin-top:-8px;margin-bottom:8px;">
+      ${nextMilestone}回公演まであと${remaining}回<br>${d.getMonth() + 1}月${d.getDate()}の ${truncateStageName(milestoneEvent.stage.replace(targetGroup, '').trim())}公演 で達成予定
     </div>`;
-    if (milestoneFutureEvent) {
-      const dateObj = new Date(milestoneFutureEvent.date);
-      const mm = dateObj.getMonth() + 1;
-      const dd = dateObj.getDate();
-      const dateStr = `${mm}月${dd}日`;
-      const stageName = truncateStageName(milestoneFutureEvent.stage.replace(targetGroup, '').trim());
-      html += `<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">
-        ${dateStr}の ${stageName}公演 で達成予定
-      </div>`;
-    }
   }
 
   html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows)}`;
@@ -309,31 +290,17 @@ async function onMemberChange() {
   if (milestones.length > 0) {
     html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], milestones.map(m => [`${m.milestone}回`, m.date, m.stage]))}`;
   }
+
   html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows)}`;
-  html += `<h3>演目別出演回数ランキング</h3>${
-    Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a])
-    .map(stage =>
-      `<details><summary>${stage}</summary>${createTableHTML(['順位', '名前', '回数'], (function(){
-        const counts = {};
-        pastPerformances.filter(p => p.stage.replace(targetGroup, '').trim() === stage)
-          .forEach(p => p.members.forEach(m => counts[m] = (counts[m] || 0) + 1));
-        return sortRankingWithTies(
-          Object.entries(counts).map(([name, count]) => ({ name, count })),
-          combinedMembers
-        ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
-      })())}</details>`
-    ).join('')
-  }`;
+  html += `<h3>演目別出演回数ランキング</h3>${stageRankings}`;
   html += `<h3>年別出演回数</h3>${createTableHTML(['年', '回数'], yearRows)}`;
   html += `<h3>年別出演回数ランキング</h3>${
-    Object.entries(yearRanking).sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([year, rows]) =>
-        `<details><summary>${year}年</summary>${createTableHTML(['順位', '名前', '回数'], rows)}</details>`
-      ).join('')
+    Object.entries(yearRankings).map(([y, rows]) =>
+      `<details><summary>${y}年</summary>${createTableHTML(['順位', '名前', '回数'], rows)}</details>`
+    ).join('')
   }`;
-
   html += `<h3>共演回数ランキング</h3>${createTableHTML(['順位', '名前', '回数'], coRanking)}`;
-  html += `<h3>共演履歴</h3>${coHistoryHtml}`;
+  html += `<h3>共演履歴</h3>${coHistories}`;
 
   output.innerHTML = html;
 }
