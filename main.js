@@ -89,10 +89,16 @@ function setupGroupOptions() {
   });
 }
 
-function onGroupChange() {
-  const selectedGroup = groupSelect.value;
+let isMemberChangeProcessing = false; // onMemberChangeの多重呼び出し防止用フラグ
+
+function clearMemberSelection() {
   memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
-  memberSelect.disabled = !selectedGroup;
+  memberSelect.disabled = true;
+}
+
+async function onGroupChange() {
+  const selectedGroup = groupSelect.value;
+  clearMemberSelection();
   output.innerHTML = '';
   if (!selectedGroup) return;
 
@@ -104,15 +110,16 @@ function onGroupChange() {
     opt.textContent = member;
     memberSelect.appendChild(opt);
   });
+  memberSelect.disabled = false;
 
   // 選択グループのperformanceを先読み（直列）
   output.textContent = 'データを読み込み中…';
-  loadPerformancesByGroup(selectedGroup).then(loadedPerformances => {
-    performances = loadedPerformances;
+  try {
+    performances = await loadPerformancesByGroup(selectedGroup);
     output.textContent = '';
-  }).catch(e => {
+  } catch (e) {
     output.innerHTML = `<p style="color:red;">データ読み込みエラー: ${e.message}</p>`;
-  });
+  }
 }
 
 function createTableHTML(headers, rows) {
@@ -156,10 +163,16 @@ function sortByDateAscendingWithIndex(a, b) {
 }
 
 async function onMemberChange() {
+  if (isMemberChangeProcessing) return; // 多重呼び出し防止
+  isMemberChangeProcessing = true;
+
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
   output.innerHTML = '';
-  if (!selectedGroup || !member) return;
+  if (!selectedGroup || !member) {
+    isMemberChangeProcessing = false;
+    return;
+  }
 
   // 「AKB48 卒業生」などを外したグループ名
   let targetGroup = selectedGroup;
@@ -345,6 +358,8 @@ async function onMemberChange() {
   html += `<h3>共演履歴</h3>${coHistoryHtml}`;
 
   output.innerHTML = html;
+
+  isMemberChangeProcessing = false; // 処理終了フラグOFF
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -353,8 +368,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     await fetchPerformanceFiles();
     setupGroupOptions();
 
-    groupSelect.addEventListener('change', onGroupChange);
-    memberSelect.addEventListener('change', onMemberChange);
+    // いったんイベントリスナーを全部解除してからセット（多重登録防止）
+    groupSelect.replaceWith(groupSelect.cloneNode(true));
+    memberSelect.replaceWith(memberSelect.cloneNode(true));
+
+    const newGroupSelect = document.getElementById('group-select');
+    const newMemberSelect = document.getElementById('member-select');
+
+    newGroupSelect.addEventListener('change', onGroupChange);
+    newMemberSelect.addEventListener('change', onMemberChange);
   } catch (e) {
     output.innerHTML = `<p style="color:red;">読み込みエラー: ${e.message}</p>`;
     groupSelect.disabled = true;
