@@ -2,7 +2,7 @@ const GROUPS_URL = './src/data/groups.json';
 const PERFORMANCE_FILES_URL = './src/data/performance_files.json';
 
 let groups = {};
-let groupFiles = {};  // グループごとのperformanceファイル名一覧
+let groupFiles = {};
 let performances = [];
 
 const GROUP_ALIAS = {
@@ -30,7 +30,6 @@ function truncateStageName(stageName) {
   return stageName.length > 11 ? stageName.slice(0, 10) + '…' : stageName;
 }
 
-// 18文字以上は省略して17文字目に「…」を付ける
 function truncateStageNameLong(name) {
   return name.length > 20 ? name.slice(0, 19) + '…' : name;
 }
@@ -89,37 +88,31 @@ function setupGroupOptions() {
   });
 }
 
-let isMemberChangeProcessing = false; // onMemberChangeの多重呼び出し防止用フラグ
-
-function clearMemberSelection() {
-  memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
-  memberSelect.disabled = true;
-}
-
-async function onGroupChange() {
+function onGroupChange() {
   const selectedGroup = groupSelect.value;
-  clearMemberSelection();
+  memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
+  memberSelect.disabled = !selectedGroup;
   output.innerHTML = '';
+
   if (!selectedGroup) return;
 
-  // グループに対応したメンバー一覧をセット
+  // メンバー一覧セット
   const memberList = groups[selectedGroup] || [];
-  memberList.forEach(member => {
+  for (const member of memberList) {
     const opt = document.createElement('option');
     opt.value = member;
     opt.textContent = member;
     memberSelect.appendChild(opt);
-  });
-  memberSelect.disabled = false;
-
-  // 選択グループのperformanceを先読み（直列）
-  output.textContent = 'データを読み込み中…';
-  try {
-    performances = await loadPerformancesByGroup(selectedGroup);
-    output.textContent = '';
-  } catch (e) {
-    output.innerHTML = `<p style="color:red;">データ読み込みエラー: ${e.message}</p>`;
   }
+
+  // データ読み込み
+  output.textContent = 'データを読み込み中…';
+  loadPerformancesByGroup(selectedGroup).then(loadedPerformances => {
+    performances = loadedPerformances;
+    output.textContent = '';
+  }).catch(e => {
+    output.innerHTML = `<p style="color:red;">データ読み込みエラー: ${e.message}</p>`;
+  });
 }
 
 function createTableHTML(headers, rows) {
@@ -141,7 +134,9 @@ function sortRankingWithTies(arr, groupList = []) {
     if (bIndex !== -1) return 1;
     return a.name.localeCompare(b.name);
   });
-  let lastCount = null, lastRank = 0;
+
+  let lastCount = null;
+  let lastRank = 0;
   arr.forEach((item, i) => {
     if (item.count !== lastCount) {
       lastCount = item.count;
@@ -149,6 +144,7 @@ function sortRankingWithTies(arr, groupList = []) {
     }
     item.rank = lastRank;
   });
+
   return arr;
 }
 
@@ -163,33 +159,19 @@ function sortByDateAscendingWithIndex(a, b) {
 }
 
 async function onMemberChange() {
-  if (isMemberChangeProcessing) return; // 多重呼び出し防止
-  isMemberChangeProcessing = true;
-
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
   output.innerHTML = '';
-  if (!selectedGroup || !member) {
-    isMemberChangeProcessing = false;
-    return;
-  }
+  if (!selectedGroup || !member) return;
 
-  // 「AKB48 卒業生」などを外したグループ名
-  let targetGroup = selectedGroup;
-  if (selectedGroup.endsWith(' 卒業生')) {
-    targetGroup = selectedGroup.replace(' 卒業生', '');
-  }
+  let targetGroup = selectedGroup.replace(' 卒業生', '');
 
-  // 該当グループ＋卒業生の全メンバーリスト
   const combinedMembers = [
     ...(groups[targetGroup] || []),
     ...(groups[targetGroup + ' 卒業生'] || [])
   ];
 
-  // 今日の日付
   const todayStr = getTodayString();
-
-  // performances は既に先読み済み
   const relevantPerformances = performances.filter(p => p.stage.startsWith(targetGroup));
   const pastPerformances = relevantPerformances.filter(p => p.date <= todayStr);
   const futurePerformances = relevantPerformances.filter(p => p.date > todayStr);
@@ -227,6 +209,7 @@ async function onMemberChange() {
       milestones.push({ date: perf.date, stage: stageName, milestone: m });
     }
   }
+
   const sortedMilestones = milestones.sort((a, b) => b.milestone - a.milestone);
 
   const historyRows = memberPast.slice().sort(sortByDateDescendingWithIndex).map(p => [
@@ -256,8 +239,7 @@ async function onMemberChange() {
   const coCounts = {};
   memberPast.forEach(p => {
     p.members.forEach(m => {
-      if (m === member) return;
-      coCounts[m] = (coCounts[m] || 0) + 1;
+      if (m !== member) coCounts[m] = (coCounts[m] || 0) + 1;
     });
   });
 
@@ -290,6 +272,7 @@ async function onMemberChange() {
     const y = p.date.slice(0, 4);
     yearCounts[y] = (yearCounts[y] || 0) + 1;
   });
+
   const yearRows = Object.entries(yearCounts)
     .sort((a, b) => b[0].localeCompare(a[0]))
     .map(([year, count]) => [`${year}年`, `${count}回`]);
@@ -313,10 +296,8 @@ async function onMemberChange() {
       ${nextMilestone}回公演まであと${remaining}回
     </div>`;
     if (milestoneFutureEvent) {
-      const dateObj = new Date(milestoneFutureEvent.date);
-      const mm = dateObj.getMonth() + 1;
-      const dd = dateObj.getDate();
-      const dateStr = `${mm}月${dd}日`;
+      const d = new Date(milestoneFutureEvent.date);
+      const dateStr = `${d.getMonth() + 1}月${d.getDate()}日`;
       const stageName = truncateStageName(milestoneFutureEvent.stage.replace(targetGroup, '').trim());
       html += `<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">
         ${dateStr}の ${stageName}公演 で達成予定
@@ -346,6 +327,7 @@ async function onMemberChange() {
       })())}</details>`
     ).join('')
   }`;
+
   html += `<h3>年別出演回数</h3>${createTableHTML(['年', '回数'], yearRows)}`;
   html += `<h3>年別出演回数ランキング</h3>${
     Object.entries(yearRanking).sort((a, b) => b[0].localeCompare(a[0]))
@@ -358,8 +340,6 @@ async function onMemberChange() {
   html += `<h3>共演履歴</h3>${coHistoryHtml}`;
 
   output.innerHTML = html;
-
-  isMemberChangeProcessing = false; // 処理終了フラグOFF
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
@@ -368,15 +348,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     await fetchPerformanceFiles();
     setupGroupOptions();
 
-    // いったんイベントリスナーを全部解除してからセット（多重登録防止）
-    groupSelect.replaceWith(groupSelect.cloneNode(true));
-    memberSelect.replaceWith(memberSelect.cloneNode(true));
-
-    const newGroupSelect = document.getElementById('group-select');
-    const newMemberSelect = document.getElementById('member-select');
-
-    newGroupSelect.addEventListener('change', onGroupChange);
-    newMemberSelect.addEventListener('change', onMemberChange);
+    groupSelect.addEventListener('change', onGroupChange);
+    memberSelect.addEventListener('change', onMemberChange);
   } catch (e) {
     output.innerHTML = `<p style="color:red;">読み込みエラー: ${e.message}</p>`;
     groupSelect.disabled = true;
