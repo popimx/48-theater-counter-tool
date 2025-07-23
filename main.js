@@ -1,7 +1,9 @@
 const GROUPS_URL = './src/data/groups.json';
+const PERFORMANCE_FILES_URL = './src/data/performance_files.json';
 
 let groups = {};
 let performances = [];
+let performanceFiles = {};
 
 const GROUP_ALIAS = {
   'AKB48 卒業生': 'AKB48',
@@ -24,8 +26,8 @@ function getTodayString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function truncateStageName(stageName) {
-  return stageName.length > 11 ? stageName.slice(0, 10) + '…' : stageName;
+function truncateStageName(name) {
+  return name.length > 11 ? name.slice(0, 10) + '…' : name;
 }
 
 function truncateStageNameLong(name) {
@@ -38,35 +40,31 @@ async function fetchGroups() {
   groups = await res.json();
 }
 
-async function loadPerformanceFiles(group) {
-  performances = [];
-  const baseGroup = group.replace(' 卒業生', '');
-  const startYear = 2005;
-  const currentYear = new Date().getFullYear();
-  const fileNames = [];
+async function fetchPerformanceFiles() {
+  const res = await fetch(PERFORMANCE_FILES_URL);
+  if (!res.ok) throw new Error('performance_files.jsonの取得に失敗しました');
+  performanceFiles = await res.json();
+}
 
-  for (let y = startYear; y <= currentYear; y++) {
-    fileNames.push(`./src/data/performance_${baseGroup.toLowerCase()}_${y}.json`);
-  }
+async function fetchPerformancesForGroup(groupName) {
+  const targetGroup = GROUP_ALIAS[groupName] || groupName;
+  const files = performanceFiles[groupName] || performanceFiles[targetGroup];
+  if (!files || files.length === 0) return [];
 
-  for (const url of fileNames) {
-    try {
-      const res = await fetch(url + '?' + Date.now());
-      if (res.ok) {
-        const raw = await res.json();
-        raw.forEach((p, index) => {
-          performances.push({
-            ...p,
-            index: performances.length + index,
-            members: p.members.map(m => m.trim()),
-            time: (p.time || "").trim()
-          });
-        });
-      }
-    } catch (e) {
-      // ファイルが存在しない場合はスキップ
+  const allData = [];
+  for (const file of files) {
+    const res = await fetch(`./src/data/${file}`);
+    if (res.ok) {
+      const json = await res.json();
+      allData.push(...json.map((p, index) => ({
+        ...p,
+        index,
+        members: p.members.map(m => m.trim()),
+        time: (p.time || "").trim()
+      })));
     }
   }
+  return allData;
 }
 
 function setupGroupOptions() {
@@ -140,9 +138,13 @@ async function onMemberChange() {
   output.innerHTML = 'データを読み込み中…';
   if (!selectedGroup || !member) return;
 
-  await loadPerformanceFiles(selectedGroup);
+  performances = await fetchPerformancesForGroup(selectedGroup);
 
-  const targetGroup = selectedGroup.replace(' 卒業生', '');
+  let targetGroup = selectedGroup;
+  if (selectedGroup.endsWith(' 卒業生')) {
+    targetGroup = selectedGroup.replace(' 卒業生', '');
+  }
+
   const combinedMembers = [
     ...(groups[targetGroup] || []),
     ...(groups[targetGroup + ' 卒業生'] || [])
@@ -321,10 +323,13 @@ async function onMemberChange() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   try {
+    output.innerHTML = 'グループデータを読み込み中…';
     await fetchGroups();
+    await fetchPerformanceFiles();
     setupGroupOptions();
     groupSelect.addEventListener('change', onGroupChange);
     memberSelect.addEventListener('change', onMemberChange);
+    output.innerHTML = '';
   } catch (e) {
     output.innerHTML = `<p style="color:red;">読み込みエラー: ${e.message}</p>`;
     groupSelect.disabled = true;
