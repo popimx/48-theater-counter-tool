@@ -51,6 +51,7 @@
       white-space: normal;
       line-height: 1.4;
       margin-top: 8px;
+      min-height: 2em;
     }
 
     h3 {
@@ -98,6 +99,13 @@
     details[open] summary {
       color: #1976d2;
     }
+
+    #loading-message {
+      text-align: center;
+      font-size: 0.95rem;
+      color: #666;
+      margin-top: 1rem;
+    }
   </style>
 </head>
 <body>
@@ -113,7 +121,7 @@
     <option value="">-- メンバーを選択 --</option>
   </select>
 
-  <div id="output"></div>
+  <div id="output">データを読み込み中…</div>
 
   <script src="main.js?t=<?=Date.now()?>"></script>
   <script>
