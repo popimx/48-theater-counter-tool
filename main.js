@@ -2,6 +2,7 @@ const GROUPS_URL = './src/data/groups.json';
 const PERFORMANCE_FILES_URL = './src/data/performance_files.json';
 
 let groups = {};
+let performanceFiles = {};
 let performances = [];
 
 const GROUP_ALIAS = {
@@ -25,8 +26,8 @@ function getTodayString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function truncateStageName(stageName) {
-  return stageName.length > 11 ? stageName.slice(0, 10) + '…' : stageName;
+function truncateStageName(name) {
+  return name.length > 11 ? name.slice(0, 10) + '…' : name;
 }
 
 function truncateStageNameLong(name) {
@@ -42,32 +43,7 @@ async function fetchGroups() {
 async function fetchPerformanceFiles() {
   const res = await fetch(PERFORMANCE_FILES_URL);
   if (!res.ok) throw new Error('performance_files.jsonの取得に失敗しました');
-  return await res.json();
-}
-
-async function fetchPerformancesForGroup(group) {
-  const baseGroup = group.replace(' 卒業生', '');
-  const files = await fetchPerformanceFiles();
-
-  const groupFiles = files
-    .filter(f => f.group === baseGroup)
-    .map(f => `./src/data/${f.file}?t=${Date.now()}`);
-
-  const results = await Promise.all(
-    groupFiles.map(url =>
-      fetch(url)
-        .then(res => res.ok ? res.json() : [])
-        .catch(() => [])
-    )
-  );
-
-  // 平坦化して1つの配列に統合
-  return results.flat().map((p, index) => ({
-    ...p,
-    index,
-    members: p.members.map(m => m.trim()),
-    time: (p.time || "").trim()
-  }));
+  performanceFiles = await res.json();
 }
 
 function setupGroupOptions() {
@@ -84,8 +60,10 @@ function onGroupChange() {
   memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
   memberSelect.disabled = !selectedGroup;
   output.innerHTML = '';
+
   if (!selectedGroup) return;
 
+  // メンバー選択肢を先に表示
   const memberList = groups[selectedGroup] || [];
   memberList.forEach(member => {
     const opt = document.createElement('option');
@@ -93,15 +71,41 @@ function onGroupChange() {
     opt.textContent = member;
     memberSelect.appendChild(opt);
   });
+
+  // 「読み込み中...」を表示しつつ該当performanceファイルを直列読み込み
+  output.innerHTML = `<p style="color:#555;">データを読み込み中...</p>`;
+  loadPerformancesByGroup(selectedGroup).then(() => {
+    output.innerHTML = '';
+  }).catch(e => {
+    output.innerHTML = `<p style="color:red;">読み込みエラー: ${e.message}</p>`;
+  });
 }
 
-function createTableHTML(headers, rows) {
-  return `
-    <table>
-      <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-    </table>
-  `;
+async function loadPerformancesByGroup(group) {
+  performances = [];
+
+  // グループのベース名（卒業生→本体）に変換
+  const baseGroup = GROUP_ALIAS[group] || group;
+
+  // 通常と卒業生を両方読み込む
+  const targets = [baseGroup, `${baseGroup} 卒業生`].filter(g => performanceFiles[g]);
+
+  for (const g of targets) {
+    const fileList = performanceFiles[g];
+    for (const file of fileList) {
+      const res = await fetch(`./src/data/${file}`);
+      if (!res.ok) throw new Error(`${file} の取得に失敗しました`);
+      const raw = await res.json();
+      performances.push(
+        ...raw.map((p, index) => ({
+          ...p,
+          index,
+          members: p.members.map(m => m.trim()),
+          time: (p.time || '').trim()
+        }))
+      );
+    }
+  }
 }
 
 function sortRankingWithTies(arr, groupList = []) {
@@ -135,19 +139,30 @@ function sortByDateAscendingWithIndex(a, b) {
   return a.index - b.index;
 }
 
+function createTableHTML(headers, rows) {
+  return `
+    <table>
+      <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
 async function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
-  output.innerHTML = '<div style="padding:8px;font-size:1rem;">データを読み込み中…</div>';
+  output.innerHTML = 'データを読み込み中…';
+
   if (!selectedGroup || !member) return;
 
-  performances = await fetchPerformancesForGroup(selectedGroup);
-
-  let targetGroup = selectedGroup;
-  if (selectedGroup.endsWith(' 卒業生')) {
-    targetGroup = selectedGroup.replace(' 卒業生', '');
+  try {
+    await loadPerformancesByGroup(selectedGroup);
+  } catch (e) {
+    output.innerHTML = `<p style="color:red;">データ読み込み失敗: ${e.message}</p>`;
+    return;
   }
 
+  let targetGroup = selectedGroup.replace(' 卒業生', '');
   const combinedMembers = [
     ...(groups[targetGroup] || []),
     ...(groups[targetGroup + ' 卒業生'] || [])
@@ -294,9 +309,7 @@ async function onMemberChange() {
   if (milestones.length > 0) {
     html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], milestones.map(m => [`${m.milestone}回`, m.date, m.stage]))}`;
   }
-
   html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows)}`;
-
   html += `<h3>演目別出演回数ランキング</h3>${
     Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a])
     .map(stage =>
@@ -311,7 +324,6 @@ async function onMemberChange() {
       })())}</details>`
     ).join('')
   }`;
-
   html += `<h3>年別出演回数</h3>${createTableHTML(['年', '回数'], yearRows)}`;
   html += `<h3>年別出演回数ランキング</h3>${
     Object.entries(yearRanking).sort((a, b) => b[0].localeCompare(a[0]))
@@ -329,11 +341,12 @@ async function onMemberChange() {
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     await fetchGroups();
+    await fetchPerformanceFiles();
     setupGroupOptions();
     groupSelect.addEventListener('change', onGroupChange);
     memberSelect.addEventListener('change', onMemberChange);
   } catch (e) {
-    output.innerHTML = `<p style="color:red;">読み込みエラー: ${e.message}</p>`;
+    output.innerHTML = `<p style="color:red;">初期読み込みエラー: ${e.message}</p>`;
     groupSelect.disabled = true;
     memberSelect.disabled = true;
   }
