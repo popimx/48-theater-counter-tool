@@ -54,9 +54,9 @@ async function loadPerformancesByGroup(group) {
     relatedGroups.push(group + ' 卒業生');
   }
 
-  const files = relatedGroups.flatMap(g => groupFiles[g] || []);
-  const results = [];
+  const files = Array.from(new Set(relatedGroups.flatMap(g => groupFiles[g] || []))); // 重複排除！
 
+  const results = [];
   for (const file of files) {
     try {
       const res = await fetch(`./src/data/${file}`);
@@ -76,7 +76,19 @@ async function loadPerformancesByGroup(group) {
     }
   }
 
-  return results;
+  // パフォーマンス重複排除（全フィールドから一意キーを生成）
+  const seen = new Set();
+  const uniquePerformances = [];
+  const uniqueKey = (p) => `${p.date}_${p.stage}_${p.time}_${p.members.join(',')}`;
+  for (const p of results) {
+    const key = uniqueKey(p);
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniquePerformances.push(p);
+    }
+  }
+
+  return uniquePerformances;
 }
 
 function setupGroupOptions() {
@@ -94,9 +106,10 @@ function onGroupChange() {
   memberSelect.disabled = !selectedGroup;
   output.innerHTML = '';
 
+  performances = []; // 初期化！
+
   if (!selectedGroup) return;
 
-  // メンバー一覧セット
   const memberList = groups[selectedGroup] || [];
   for (const member of memberList) {
     const opt = document.createElement('option');
@@ -105,7 +118,6 @@ function onGroupChange() {
     memberSelect.appendChild(opt);
   }
 
-  // データ読み込み
   output.textContent = 'データを読み込み中…';
   loadPerformancesByGroup(selectedGroup).then(loadedPerformances => {
     performances = loadedPerformances;
@@ -162,10 +174,17 @@ async function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
   output.innerHTML = '';
+
   if (!selectedGroup || !member) return;
 
-  let targetGroup = selectedGroup.replace(' 卒業生', '');
+  if (!performances.length) {
+    output.textContent = 'データを読み込み中…';
+    // すぐに表示できるように、強制読み込み（念のため）
+    performances = await loadPerformancesByGroup(selectedGroup);
+    output.textContent = '';
+  }
 
+  let targetGroup = selectedGroup.replace(' 卒業生', '');
   const combinedMembers = [
     ...(groups[targetGroup] || []),
     ...(groups[targetGroup + ' 卒業生'] || [])
@@ -182,8 +201,8 @@ async function onMemberChange() {
     .map((p, i) => ({ ...p, count: i + 1 }));
 
   const totalCount = memberPast.length;
-
-  const memberFuture = futurePerformances
+  
+    const memberFuture = futurePerformances
     .filter(p => p.members.includes(member))
     .sort(sortByDateAscendingWithIndex);
 
@@ -247,8 +266,8 @@ async function onMemberChange() {
     Object.entries(coCounts).map(([name, count]) => ({ name, count })),
     combinedMembers
   ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
-
-  const coHistoryHtml = coRanking.map(([rankStr, coMember, countStr]) => {
+  
+    const coHistoryHtml = coRanking.map(([rankStr, coMember, countStr]) => {
     const count = parseInt(countStr);
     const coPerformances = memberPast
       .filter(p => p.members.includes(coMember))
@@ -304,8 +323,8 @@ async function onMemberChange() {
       </div>`;
     }
   }
-
-  html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows)}`;
+  
+    html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows)}`;
   if (futureRows.length > 0) {
     html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows)}`;
   }
