@@ -3,7 +3,6 @@ const PERFORMANCE_FILES_URL = './src/data/performance_files.json';
 
 let groups = {};
 let performances = [];
-let performanceFiles = {};
 
 const GROUP_ALIAS = {
   'AKB48 卒業生': 'AKB48',
@@ -26,8 +25,8 @@ function getTodayString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function truncateStageName(name) {
-  return name.length > 11 ? name.slice(0, 10) + '…' : name;
+function truncateStageName(stageName) {
+  return stageName.length > 11 ? stageName.slice(0, 10) + '…' : stageName;
 }
 
 function truncateStageNameLong(name) {
@@ -43,28 +42,32 @@ async function fetchGroups() {
 async function fetchPerformanceFiles() {
   const res = await fetch(PERFORMANCE_FILES_URL);
   if (!res.ok) throw new Error('performance_files.jsonの取得に失敗しました');
-  performanceFiles = await res.json();
+  return await res.json();
 }
 
-async function fetchPerformancesForGroup(groupName) {
-  const targetGroup = GROUP_ALIAS[groupName] || groupName;
-  const files = performanceFiles[groupName] || performanceFiles[targetGroup];
-  if (!files || files.length === 0) return [];
+async function fetchPerformancesForGroup(group) {
+  const baseGroup = group.replace(' 卒業生', '');
+  const files = await fetchPerformanceFiles();
 
-  const allData = [];
-  for (const file of files) {
-    const res = await fetch(`./src/data/${file}`);
-    if (res.ok) {
-      const json = await res.json();
-      allData.push(...json.map((p, index) => ({
-        ...p,
-        index,
-        members: p.members.map(m => m.trim()),
-        time: (p.time || "").trim()
-      })));
-    }
-  }
-  return allData;
+  const groupFiles = files
+    .filter(f => f.group === baseGroup)
+    .map(f => `./src/data/${f.file}?t=${Date.now()}`);
+
+  const results = await Promise.all(
+    groupFiles.map(url =>
+      fetch(url)
+        .then(res => res.ok ? res.json() : [])
+        .catch(() => [])
+    )
+  );
+
+  // 平坦化して1つの配列に統合
+  return results.flat().map((p, index) => ({
+    ...p,
+    index,
+    members: p.members.map(m => m.trim()),
+    time: (p.time || "").trim()
+  }));
 }
 
 function setupGroupOptions() {
@@ -135,7 +138,7 @@ function sortByDateAscendingWithIndex(a, b) {
 async function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
-  output.innerHTML = 'データを読み込み中…';
+  output.innerHTML = '<div style="padding:8px;font-size:1rem;">データを読み込み中…</div>';
   if (!selectedGroup || !member) return;
 
   performances = await fetchPerformancesForGroup(selectedGroup);
@@ -188,7 +191,6 @@ async function onMemberChange() {
       milestones.push({ date: perf.date, stage: stageName, milestone: m });
     }
   }
-  const sortedMilestones = milestones.sort((a, b) => b.milestone - a.milestone);
 
   const historyRows = memberPast.slice().sort(sortByDateDescendingWithIndex).map(p => [
     p.count,
@@ -289,10 +291,12 @@ async function onMemberChange() {
   if (futureRows.length > 0) {
     html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows)}`;
   }
-  if (sortedMilestones.length > 0) {
-    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]))}`;
+  if (milestones.length > 0) {
+    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], milestones.map(m => [`${m.milestone}回`, m.date, m.stage]))}`;
   }
+
   html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows)}`;
+
   html += `<h3>演目別出演回数ランキング</h3>${
     Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a])
     .map(stage =>
@@ -307,6 +311,7 @@ async function onMemberChange() {
       })())}</details>`
     ).join('')
   }`;
+
   html += `<h3>年別出演回数</h3>${createTableHTML(['年', '回数'], yearRows)}`;
   html += `<h3>年別出演回数ランキング</h3>${
     Object.entries(yearRanking).sort((a, b) => b[0].localeCompare(a[0]))
@@ -323,13 +328,10 @@ async function onMemberChange() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   try {
-    output.innerHTML = 'グループデータを読み込み中…';
     await fetchGroups();
-    await fetchPerformanceFiles();
     setupGroupOptions();
     groupSelect.addEventListener('change', onGroupChange);
     memberSelect.addEventListener('change', onMemberChange);
-    output.innerHTML = '';
   } catch (e) {
     output.innerHTML = `<p style="color:red;">読み込みエラー: ${e.message}</p>`;
     groupSelect.disabled = true;
