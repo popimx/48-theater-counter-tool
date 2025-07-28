@@ -29,7 +29,7 @@ function getTodayString() {
 function truncateStageName(stageName) {
   const specialCases = {
     'きっと見つかる、KOIしてLOVEしてきゅんmart': 'きっと見つかる、KOI…',
-    'その雫は、未来へと繋がる虹になる。': 'その雫は、未来へと繋が…',
+    'その雫は、未来へと繋がる虹になる。': 'その雫は、未来へと繋…',
     "We're Growing Up〜2nd〜": "We're Growing Up〜…"
   };
   if (specialCases[stageName]) return specialCases[stageName];
