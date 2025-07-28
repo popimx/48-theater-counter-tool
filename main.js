@@ -26,12 +26,56 @@ function getTodayString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function truncateStageName(stageName) {
-  return stageName.length > 11 ? stageName.slice(0, 10) + '…' : stageName;
+// 新：演目名文字数カウント（ひらがな・カタカナ・漢字=1、数字・英字・記号・スペース=0.5）
+function countStageNameChars(name) {
+  let count = 0;
+  for (const ch of name) {
+    if (
+      (ch >= 'ぁ' && ch <= 'ん') || // ひらがな
+      (ch >= 'ァ' && ch <= 'ン') || // カタカナ
+      (ch >= '\u4E00' && ch <= '\u9FFF') // 漢字
+    ) {
+      count += 1;
+    } else {
+      // 数字・英字・記号・スペース等は0.5文字
+      count += 0.5;
+    }
+  }
+  return count;
 }
 
+// グループ名除去してトリムし、文字数制限超過なら省略（例：11文字以上で省略）
+function truncateStageName(stageName) {
+  // ここでグループ名除去は使う側で処理すると想定
+  if (countStageNameChars(stageName) > 11) {
+    // 11文字超過なら10文字相当まで切り取り＋…（文字数計算に合わせて処理）
+    let truncated = '';
+    let length = 0;
+    for (const ch of stageName) {
+      const charLen = ((ch >= 'ぁ' && ch <= 'ん') || (ch >= 'ァ' && ch <= 'ン') || (ch >= '\u4E00' && ch <= '\u9FFF')) ? 1 : 0.5;
+      if (length + charLen > 10) break;
+      truncated += ch;
+      length += charLen;
+    }
+    return truncated + '…';
+  }
+  return stageName;
+}
+
+// 長めの演目用（20文字以上で省略）
 function truncateStageNameLong(name) {
-  return name.length > 20 ? name.slice(0, 19) + '…' : name;
+  if (countStageNameChars(name) > 20) {
+    let truncated = '';
+    let length = 0;
+    for (const ch of name) {
+      const charLen = ((ch >= 'ぁ' && ch <= 'ん') || (ch >= 'ァ' && ch <= 'ン') || (ch >= '\u4E00' && ch <= '\u9FFF')) ? 1 : 0.5;
+      if (length + charLen > 19) break;
+      truncated += ch;
+      length += charLen;
+    }
+    return truncated + '…';
+  }
+  return name;
 }
 
 async function fetchGroups() {
@@ -169,7 +213,6 @@ function sortByDateAscendingWithIndex(a, b) {
   if (a.date !== b.date) return a.date.localeCompare(b.date);
   return a.index - b.index;
 }
-
 async function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
@@ -179,7 +222,6 @@ async function onMemberChange() {
 
   if (!performances.length) {
     output.textContent = 'データを読み込み中…';
-    // すぐに表示できるように、強制読み込み（念のため）
     performances = await loadPerformancesByGroup(selectedGroup);
     output.textContent = '';
   }
@@ -195,14 +237,22 @@ async function onMemberChange() {
   const pastPerformances = relevantPerformances.filter(p => p.date <= todayStr);
   const futurePerformances = relevantPerformances.filter(p => p.date > todayStr);
 
+  // 演目名からグループ名を除去してトリムする関数
+  function cleanStageName(stage) {
+    if (stage.startsWith(targetGroup)) {
+      return stage.slice(targetGroup.length).trim();
+    }
+    return stage;
+  }
+
   const memberPast = pastPerformances
     .filter(p => p.members.includes(member))
     .sort(sortByDateAscendingWithIndex)
     .map((p, i) => ({ ...p, count: i + 1 }));
 
   const totalCount = memberPast.length;
-  
-    const memberFuture = futurePerformances
+
+  const memberFuture = futurePerformances
     .filter(p => p.members.includes(member))
     .sort(sortByDateAscendingWithIndex);
 
@@ -224,7 +274,7 @@ async function onMemberChange() {
   for (let m = 100; m <= totalCount; m += 100) {
     const perf = memberPast[m - 1];
     if (perf) {
-      const stageName = truncateStageName(perf.stage.replace(targetGroup, '').trim());
+      const stageName = truncateStageName(cleanStageName(perf.stage));
       milestones.push({ date: perf.date, stage: stageName, milestone: m });
     }
   }
@@ -234,20 +284,20 @@ async function onMemberChange() {
   const historyRows = memberPast.slice().sort(sortByDateDescendingWithIndex).map(p => [
     p.count,
     p.date,
-    truncateStageName(p.stage.replace(targetGroup, '').trim()),
+    truncateStageName(cleanStageName(p.stage)),
     p.time || ''
   ]);
 
   const futureRows = memberFuture.map((p, i) => [
     totalCount + i + 1,
     p.date,
-    truncateStageName(p.stage.replace(targetGroup, '').trim()),
+    truncateStageName(cleanStageName(p.stage)),
     p.time || ''
   ]);
 
   const stageCountMap = {};
   memberPast.forEach(p => {
-    const stageName = p.stage.replace(targetGroup, '').trim();
+    const stageName = cleanStageName(p.stage);
     stageCountMap[stageName] = (stageCountMap[stageName] || 0) + 1;
   });
 
@@ -266,8 +316,8 @@ async function onMemberChange() {
     Object.entries(coCounts).map(([name, count]) => ({ name, count })),
     combinedMembers
   ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
-  
-    const coHistoryHtml = coRanking.map(([rankStr, coMember, countStr]) => {
+
+  const coHistoryHtml = coRanking.map(([rankStr, coMember, countStr]) => {
     const count = parseInt(countStr);
     const coPerformances = memberPast
       .filter(p => p.members.includes(coMember))
@@ -275,7 +325,7 @@ async function onMemberChange() {
     const rows = coPerformances.map((p, i) => [
       count - i,
       p.date,
-      truncateStageName(p.stage.replace(targetGroup, '').trim()),
+      truncateStageName(cleanStageName(p.stage)),
       p.time || ''
     ]);
     return `
@@ -317,20 +367,21 @@ async function onMemberChange() {
     if (milestoneFutureEvent) {
       const d = new Date(milestoneFutureEvent.date);
       const dateStr = `${d.getMonth() + 1}月${d.getDate()}日`;
-      const stageName = truncateStageName(milestoneFutureEvent.stage.replace(targetGroup, '').trim());
+      const stageName = truncateStageName(cleanStageName(milestoneFutureEvent.stage));
       html += `<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">
         ${dateStr}の ${stageName}公演 で達成予定
       </div>`;
     }
   }
-  
-    html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows)}`;
+
+  html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows)}`;
   if (futureRows.length > 0) {
     html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows)}`;
   }
   if (sortedMilestones.length > 0) {
     html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]))}`;
   }
+
   html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows)}`;
   html += `<h3>演目別出演回数ランキング</h3>${
     Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a])
