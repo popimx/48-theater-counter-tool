@@ -26,68 +26,47 @@ function getTodayString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// 演目名の省略ルール（出演履歴・今後の出演予定・節目達成日用）
 function truncateStageName(stageName) {
-  if (stageName === 'きっと見つかる、KOIしてLOVEしてきゅんmart') {
-    return stageName.slice(0, 11) + '…';
-  }
+  const specialCases = {
+    'きっと見つかる、KOIしてLOVEしてきゅんmart': 'きっと見つかる、KOI…',
+    'その雫は、未来へと繋がる虹になる。': 'その雫は、未来へと繋が…',
+    "We're Growing Up〜2nd〜": "We're Growing Up〜…"
+  };
+  if (specialCases[stageName]) return specialCases[stageName];
 
   const hasJapanese = /[ぁ-んァ-ン一-龥]/.test(stageName);
-
+  const limit = hasJapanese ? 11 : 9;
   let lengthCount = 0;
   for (const ch of stageName) {
-    if (/[ぁ-んァ-ン一-龥]/.test(ch)) {
-      lengthCount += 1;
-    } else {
-      lengthCount += 0.5;
-    }
+    lengthCount += /[ぁ-んァ-ン一-龥]/.test(ch) ? 1 : 0.5;
   }
+  if (lengthCount <= limit) return stageName;
 
-  const limit = hasJapanese ? 11 : 9;
-  if (lengthCount > limit) {
-    let count = 0;
-    let cutIndex = 0;
-    for (const ch of stageName) {
-      if (/[ぁ-んァ-ン一-龥]/.test(ch)) {
-        count += 1;
-      } else {
-        count += 0.5;
-      }
-      cutIndex++;
-      if (count > limit) break;
-    }
-    return stageName.slice(0, cutIndex) + '…';
+  let count = 0;
+  let cutIndex = 0;
+  for (const ch of stageName) {
+    count += /[ぁ-んァ-ン一-龥]/.test(ch) ? 1 : 0.5;
+    cutIndex++;
+    if (count > limit) break;
   }
-
-  return stageName;
+  return stageName.slice(0, cutIndex) + '…';
 }
 
-// 演目別出演回数用省略ルール（日本語入っている・いない関係なく17文字以上は省略）
-function truncateStageNameLong(name) {
+function truncateStageNameLong(stageName) {
   let lengthCount = 0;
-  for (const ch of name) {
-    if (/[ぁ-んァ-ン一-龥]/.test(ch)) {
-      lengthCount += 1;
-    } else {
-      lengthCount += 0.5;
-    }
+  for (const ch of stageName) {
+    lengthCount += /[ぁ-んァ-ン一-龥]/.test(ch) ? 1 : 0.5;
   }
-  const limit = 17;
-  if (lengthCount > limit) {
-    let count = 0;
-    let cutIndex = 0;
-    for (const ch of name) {
-      if (/[ぁ-んァ-ン一-龥]/.test(ch)) {
-        count += 1;
-      } else {
-        count += 0.5;
-      }
-      cutIndex++;
-      if (count > limit) break;
-    }
-    return name.slice(0, cutIndex) + '…';
+  if (lengthCount <= 17) return stageName;
+
+  let count = 0;
+  let cutIndex = 0;
+  for (const ch of stageName) {
+    count += /[ぁ-んァ-ン一-龥]/.test(ch) ? 1 : 0.5;
+    cutIndex++;
+    if (count > 17) break;
   }
-  return name;
+  return stageName.slice(0, cutIndex) + '…';
 }
 
 async function fetchGroups() {
