@@ -16,16 +16,8 @@ const GROUP_ALIAS = {
 
 const groupSelect = document.getElementById('group-select');
 const memberSelect = document.getElementById('member-select');
-const output = document.getElementById('output');
 const dateSelect = document.getElementById('date-select');
-
-function getTodayString() {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
+const output = document.getElementById('output');
 
 function truncateStageName(stageName) {
   const specialCases = {
@@ -113,7 +105,7 @@ async function loadPerformancesByGroup(group) {
     }
   }
 
-  // 重複排除（一意キー）
+  // 重複排除
   const seen = new Set();
   const uniquePerformances = [];
   const uniqueKey = (p) => `${p.date}_${p.stage}_${p.time}_${p.members.join(',')}`;
@@ -135,42 +127,6 @@ function setupGroupOptions() {
     opt.textContent = group;
     groupSelect.appendChild(opt);
   });
-}
-
-function onGroupChange() {
-  const selectedGroup = groupSelect.value;
-  memberSelect.innerHTML = '<option value="">グループを選択</option>';
-  memberSelect.disabled = !selectedGroup;
-  output.innerHTML = '';
-
-  performances = [];
-
-  if (!selectedGroup) return;
-
-  const memberList = groups[selectedGroup] || [];
-  for (const member of memberList) {
-    const opt = document.createElement('option');
-    opt.value = member;
-    opt.textContent = member;
-    memberSelect.appendChild(opt);
-  }
-
-  output.textContent = 'データを読み込み中…';
-  loadPerformancesByGroup(selectedGroup).then(loadedPerformances => {
-    performances = loadedPerformances;
-    output.textContent = '';
-  }).catch(e => {
-    output.innerHTML = `<p style="color:red;">データ読み込みエラー: ${e.message}</p>`;
-  });
-}
-
-function createTableHTML(headers, rows) {
-  return `
-    <table>
-      <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
-    </table>
-  `;
 }
 
 function sortRankingWithTies(arr, groupList = []) {
@@ -207,43 +163,49 @@ function sortByDateAscendingWithIndex(a, b) {
   return a.index - b.index;
 }
 
-// 全日付セレクトボックスの生成
-function populateDateSelect() {
-  const startDate = new Date('2005-01-01');
-  const today = new Date();
+function onGroupChange() {
+  const selectedGroup = groupSelect.value;
+  memberSelect.innerHTML = '<option value="">メンバーを選択</option>';
+  memberSelect.disabled = !selectedGroup;
+  output.innerHTML = '';
 
-  const dates = [];
-  for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    dates.push(`${yyyy}/${mm}/${dd}`);
+  performances = [];
+
+  if (!selectedGroup) return;
+
+  const memberList = groups[selectedGroup] || [];
+  for (const member of memberList) {
+    const opt = document.createElement('option');
+    opt.value = member;
+    opt.textContent = member;
+    memberSelect.appendChild(opt);
   }
 
-  dates.reverse(); // 新しい日付を上にする
-
-  dates.forEach(dateStr => {
-    const opt = document.createElement('option');
-    opt.value = dateStr.replace(/\//g, '-');  // YYYY-MM-DD 形式で値を入れる
-    opt.textContent = dateStr;
-    dateSelect.appendChild(opt);
+  output.textContent = 'データを読み込み中…';
+  loadPerformancesByGroup(selectedGroup).then(loadedPerformances => {
+    performances = loadedPerformances;
+    output.textContent = '';
+  }).catch(e => {
+    output.innerHTML = `<p style="color:red;">データ読み込みエラー: ${e.message}</p>`;
   });
 }
 
-function getSelectedDateString() {
-  return dateSelect.value || getTodayString();
+async function onMemberChange() {
+  await renderData();
 }
 
-dateSelect.addEventListener('change', () => {
-  if (memberSelect.value) onMemberChange();
-});
+async function onDateChange() {
+  await renderData();
+}
 
-async function onMemberChange() {
+async function renderData() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
+  const selectedDate = dateSelect.value;
+
   output.innerHTML = '';
 
-  if (!selectedGroup || !member) return;
+  if (!selectedGroup || !member || !selectedDate) return;
 
   if (!performances.length) {
     output.textContent = 'データを読み込み中…';
@@ -257,10 +219,9 @@ async function onMemberChange() {
     ...(groups[targetGroup + ' 卒業生'] || [])
   ];
 
-  const todayStr = getSelectedDateString();
   const relevantPerformances = performances.filter(p => p.stage.startsWith(targetGroup));
-  const pastPerformances = relevantPerformances.filter(p => p.date <= todayStr);
-  const futurePerformances = relevantPerformances.filter(p => p.date > todayStr);
+  const pastPerformances = relevantPerformances.filter(p => p.date <= selectedDate);
+  const futurePerformances = relevantPerformances.filter(p => p.date > selectedDate);
 
   const memberPast = pastPerformances
     .filter(p => p.members.includes(member))
@@ -428,17 +389,24 @@ async function onMemberChange() {
   output.innerHTML = html;
 }
 
+function createTableHTML(headers, rows) {
+  return `
+    <table>
+      <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>
+  `;
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     await fetchGroups();
     await fetchPerformanceFiles();
     setupGroupOptions();
 
-    populateDateSelect();
-    dateSelect.value = getTodayString();
-
     groupSelect.addEventListener('change', onGroupChange);
     memberSelect.addEventListener('change', onMemberChange);
+    dateSelect.addEventListener('change', onDateChange);
   } catch (e) {
     output.innerHTML = `<p style="color:red;">読み込みエラー: ${e.message}</p>`;
     groupSelect.disabled = true;
