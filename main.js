@@ -34,7 +34,7 @@ function truncateStageName(stageName) {
     'ヤバいよ！ついて来れんのか？！': 'ヤバいよ！ついて来れ…',
     'その雫は、未来へと繋がる虹になる。': 'その雫は、未来へと繋…',
     "We're Growing Up〜2nd〜": "We're Growing Up〜…",
-    'もっと！一緒にみくもんもん': 'もっと！一緒にみくも…'
+    'もっと！みんなで一緒にみくもんもん': 'もっと！みんなで一緒…'
   };
   if (specialCases[stageName]) return specialCases[stageName];
 
