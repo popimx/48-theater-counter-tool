@@ -17,6 +17,7 @@ const GROUP_ALIAS = {
 const groupSelect = document.getElementById('group-select');
 const memberSelect = document.getElementById('member-select');
 const output = document.getElementById('output');
+const dateSelect = document.getElementById('date-select');
 
 function getTodayString() {
   const today = new Date();
@@ -138,7 +139,7 @@ function setupGroupOptions() {
 
 function onGroupChange() {
   const selectedGroup = groupSelect.value;
-  memberSelect.innerHTML = '<option value="">-- メンバーを選択 --</option>';
+  memberSelect.innerHTML = '<option value="">グループを選択</option>';
   memberSelect.disabled = !selectedGroup;
   output.innerHTML = '';
 
@@ -206,6 +207,37 @@ function sortByDateAscendingWithIndex(a, b) {
   return a.index - b.index;
 }
 
+// 全日付セレクトボックスの生成
+function populateDateSelect() {
+  const startDate = new Date('2005-01-01');
+  const today = new Date();
+
+  const dates = [];
+  for (let d = new Date(startDate); d <= today; d.setDate(d.getDate() + 1)) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    dates.push(`${yyyy}/${mm}/${dd}`);
+  }
+
+  dates.reverse(); // 新しい日付を上にする
+
+  dates.forEach(dateStr => {
+    const opt = document.createElement('option');
+    opt.value = dateStr.replace(/\//g, '-');  // YYYY-MM-DD 形式で値を入れる
+    opt.textContent = dateStr;
+    dateSelect.appendChild(opt);
+  });
+}
+
+function getSelectedDateString() {
+  return dateSelect.value || getTodayString();
+}
+
+dateSelect.addEventListener('change', () => {
+  if (memberSelect.value) onMemberChange();
+});
+
 async function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
@@ -225,7 +257,7 @@ async function onMemberChange() {
     ...(groups[targetGroup + ' 卒業生'] || [])
   ];
 
-  const todayStr = getTodayString();
+  const todayStr = getSelectedDateString();
   const relevantPerformances = performances.filter(p => p.stage.startsWith(targetGroup));
   const pastPerformances = relevantPerformances.filter(p => p.date <= todayStr);
   const futurePerformances = relevantPerformances.filter(p => p.date > todayStr);
@@ -401,6 +433,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     await fetchGroups();
     await fetchPerformanceFiles();
     setupGroupOptions();
+
+    populateDateSelect();
+    dateSelect.value = getTodayString();
 
     groupSelect.addEventListener('change', onGroupChange);
     memberSelect.addEventListener('change', onMemberChange);
