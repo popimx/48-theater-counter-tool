@@ -33,6 +33,7 @@ function truncateStageName(stageName) {
     'きっと見つかる、KOIしてLOVEしてきゅんmart': 'きっと見つかる、KOI…',
     'ヤバいよ！ついて来れんのか？！': 'ヤバいよ！ついて来れ…',
     'その雫は、未来へと繋がる虹になる。': 'その雫は、未来へと繋…',
+    'アップカミング公演〜THE END〜': 'アップカミング公演〜T…',
     "We're Growing Up〜2nd〜": "We're Growing Up〜…",
     'もっと！みんなで一緒にみくもんもん': 'もっと！みんなで一緒…'
   };
