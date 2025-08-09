@@ -142,7 +142,7 @@ function setupGroupOptions() {
 
 function onGroupChange() {
   const selectedGroup = groupSelect.value;
-  memberSelect.innerHTML = '<option value="">グループを選択</option>';
+  memberSelect.innerHTML = '<option value="">メンバーを選択</option>';
   memberSelect.disabled = !selectedGroup;
   output.innerHTML = '';
 
