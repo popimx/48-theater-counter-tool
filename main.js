@@ -143,7 +143,6 @@ async function loadPerformancesByGroup(group) {
 
   return uniquePerformances;
 }
-
 function setupGroupOptions() {
   Object.keys(groups).forEach(group => {
     const opt = document.createElement('option');
@@ -178,6 +177,40 @@ function onGroupChange() {
   }).catch(e => {
     output.innerHTML = `<p style="color:red;">データ読み込みエラー: ${e.message}</p>`;
   });
+}
+
+function sortByDateAscendingWithIndex(a, b) {
+  if (a.date === b.date) return a.index - b.index;
+  return a.date.localeCompare(b.date);
+}
+
+function sortByDateDescendingWithIndex(a, b) {
+  if (a.date === b.date) return b.index - a.index;
+  return b.date.localeCompare(a.date);
+}
+
+function sortRankingWithTies(arr, allMembers) {
+  // 1回以上出演した人のみ
+  const filtered = arr.filter(p => p.count > 0);
+  filtered.sort((a, b) => b.count - a.count || allMembers.indexOf(a.name) - allMembers.indexOf(b.name));
+
+  let rank = 1;
+  let lastCount = null;
+  return filtered.map((p, i) => {
+    if (lastCount !== p.count) rank = i + 1;
+    lastCount = p.count;
+    return { ...p, rank };
+  });
+}
+
+function createTableHTML(headers, rows) {
+  const thead = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>`;
+  const tbody = `<tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
+  return `<table>${thead}${tbody}</table>`;
+}
+
+function getSelectedDateString() {
+  return dateSelect.value || getTodayString();
 }
 
 async function onMemberChange() {
@@ -256,8 +289,8 @@ async function onMemberChange() {
     }
     return stageName.slice(0, cutIndex) + (count > stageMaxLength ? '…' : '');
   }
-
-  // 出演履歴
+  
+    // 出演履歴
   const historyRows = memberPast.slice().sort(sortByDateDescendingWithIndex).map(p => [
     p.count,
     p.date,
@@ -410,3 +443,5 @@ async function onMemberChange() {
   output.innerHTML = html;
 }
 
+groupSelect.addEventListener('change', onGroupChange);
+memberSelect.addEventListener('change', onMemberChange);
