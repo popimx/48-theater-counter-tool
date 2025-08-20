@@ -66,9 +66,9 @@ function truncateStageNameLong(stageName){
   for(const ch of stageName){
     count += /[ぁ-んァ-ン一-龥]/.test(ch) ? 1 : 0.5;
     cutIndex++;
-    if(count>17) break;
+    if(count>16) break;
   }
-  return count>17 ? stageName.slice(0,cutIndex)+'…' : stageName;
+  return count>16 ? stageName.slice(0,cutIndex)+'…' : stageName;
 }
 
 async function fetchGroups(){
