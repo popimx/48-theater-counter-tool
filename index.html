@@ -32,6 +32,8 @@
     }
 
     select {
+      display: block;
+      width: 100%;
       font-size: 1rem;
       padding: 6px 10px;
       margin-bottom: 12px;
@@ -43,26 +45,12 @@
 
     .date-selectors {
       display: flex;
-      width: 100%;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      overflow: hidden;
-      background-color: white;
+      gap: 6px;
+      margin-bottom: 12px;
     }
 
     .date-selectors select {
       flex: 1;
-      border: none;
-      border-radius: 0;
-      padding: 6px 8px;
-      font-size: 1rem;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      appearance: none;
-    }
-
-    .date-range-selectors > div {
-      margin-bottom: 8px;
     }
 
     #output {
@@ -122,13 +110,18 @@
       color: #1976d2;
     }
 
-    .stage-column {
-      width: 20ch;
-      white-space: nowrap;
-    }
-    .stage-column-11 {
-      width: 16.1ch;
-      white-space: nowrap;
+    /* 列幅固定 */
+    .stage-column { width: 20ch; white-space: nowrap; }
+    .stage-column-11 { width: 16.1ch; white-space: nowrap; }
+
+    /* 時間列非表示 */
+    .time-column { display: none; }
+
+    #loading-message {
+      text-align: center;
+      font-size: 0.95rem;
+      color: #666;
+      margin-top: 1rem;
     }
   </style>
 </head>
@@ -145,24 +138,18 @@
     <option value="">メンバーを選択</option>
   </select>
 
-  <label>期間を選択：</label>
-  <div class="date-range-selectors">
-    <div>
-      <div style="font-size:0.95rem;margin-bottom:2px;">から</div>
-      <div class="date-selectors">
-        <select id="year-start-year"></select>
-        <select id="year-start-month"></select>
-        <select id="year-start-day"></select>
-      </div>
-    </div>
-    <div>
-      <div style="font-size:0.95rem;margin-bottom:2px;">まで</div>
-      <div class="date-selectors">
-        <select id="year-end-year"></select>
-        <select id="year-end-month"></select>
-        <select id="year-end-day"></select>
-      </div>
-    </div>
+  <label>開始日：</label>
+  <div class="date-selectors">
+    <select id="year-start"></select>
+    <select id="month-start"></select>
+    <select id="day-start"></select>
+  </div>
+
+  <label>終了日：</label>
+  <div class="date-selectors">
+    <select id="year-end"></select>
+    <select id="month-end"></select>
+    <select id="day-end"></select>
   </div>
 
   <select id="date-start-select" style="display:none;"></select>
@@ -172,16 +159,16 @@
 
   <script src="main.js?t=<?=Date.now()?>"></script>
   <script>
-    function populateDateRangeSelectors() {
+    function populateDateSelectors() {
       const startSelectors = {
-        year: document.getElementById('year-start-year'),
-        month: document.getElementById('year-start-month'),
-        day: document.getElementById('year-start-day')
+        year: document.getElementById('year-start'),
+        month: document.getElementById('month-start'),
+        day: document.getElementById('day-start')
       };
       const endSelectors = {
-        year: document.getElementById('year-end-year'),
-        month: document.getElementById('year-end-month'),
-        day: document.getElementById('year-end-day')
+        year: document.getElementById('year-end'),
+        month: document.getElementById('month-end'),
+        day: document.getElementById('day-end')
       };
       const startSelect = document.getElementById('date-start-select');
       const endSelect = document.getElementById('date-end-select');
@@ -189,8 +176,8 @@
       const today = new Date();
       const startDate = new Date('2005-12-08');
 
-      function populateYearMonthDay(sel, fromYear, toYear, initDate) {
-        for (let y = toYear; y >= fromYear; y--) {
+      function populate(sel, initDate) {
+        for (let y = today.getFullYear(); y >= startDate.getFullYear(); y--) {
           const opt = document.createElement('option');
           opt.value = y;
           opt.textContent = `${y}年`;
@@ -208,16 +195,15 @@
           opt.textContent = `${d}日`;
           sel.day.appendChild(opt);
         }
-
         sel.year.value = initDate.getFullYear();
         sel.month.value = (initDate.getMonth()+1).toString().padStart(2,'0');
         sel.day.value = initDate.getDate().toString().padStart(2,'0');
       }
 
-      populateYearMonthDay(startSelectors, startDate.getFullYear(), today.getFullYear(), startDate);
-      populateYearMonthDay(endSelectors, startDate.getFullYear(), today.getFullYear(), today);
+      populate(startSelectors, startDate);
+      populate(endSelectors, today);
 
-      function adjustDays(sel) {
+      function adjust(sel, hiddenSel) {
         const y = parseInt(sel.year.value,10);
         const m = parseInt(sel.month.value,10);
         const lastDay = new Date(y,m,0).getDate();
@@ -232,24 +218,21 @@
         }
 
         const dateStr = `${sel.year.value}-${sel.month.value}-${sel.day.value}`;
-        if(sel === startSelectors) startSelect.value = dateStr;
-        else endSelect.value = dateStr;
-
-        startSelect.dispatchEvent(new Event('change'));
-        endSelect.dispatchEvent(new Event('change'));
+        hiddenSel.value = dateStr;
+        hiddenSel.dispatchEvent(new Event('change'));
       }
 
       ['year','month','day'].forEach(k=>{
-        startSelectors[k].addEventListener('change',()=>adjustDays(startSelectors));
-        endSelectors[k].addEventListener('change',()=>adjustDays(endSelectors));
+        startSelectors[k].addEventListener('change',()=>adjust(startSelectors,startSelect));
+        endSelectors[k].addEventListener('change',()=>adjust(endSelectors,endSelect));
       });
 
-      adjustDays(startSelectors);
-      adjustDays(endSelectors);
+      adjust(startSelectors,startSelect);
+      adjust(endSelectors,endSelect);
     }
 
     document.addEventListener('DOMContentLoaded', ()=>{
-      populateDateRangeSelectors();
+      populateDateSelectors();
     });
   </script>
 </body>
