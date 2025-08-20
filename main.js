@@ -167,12 +167,15 @@ function onGroupChange() {
   });
 }
 
-function createTableHTML(headers, rows, tableClass = '') {
+// 列ごとのクラス指定が可能なテーブル生成関数
+function createTableHTML(headers, rows, tableClass = '', columnClasses = []) {
   const classAttr = tableClass ? ` class="${tableClass}"` : '';
   return `
     <table${classAttr}>
-      <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+      <thead><tr>${headers.map((h, i) => `<th${columnClasses[i] ? ` class="${columnClasses[i]}"` : ''}>${h}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${rows.map(row => `<tr>${row.map((cell, i) => `<td${columnClasses[i] ? ` class="${columnClasses[i]}"` : ''}>${cell}</td>`).join('')}</tr>`).join('')}
+      </tbody>
     </table>
   `;
 }
@@ -352,7 +355,7 @@ async function onMemberChange() {
     return `
       <details>
         <summary>${coMember}</summary>
-        ${createTableHTML(['回数', '日付', '演目', '時間'], rows, 'co-history-table')}
+        ${createTableHTML(['回数', '日付', '演目', '時間'], rows, 'co-history-table', ['', '', 'stage-column-11', ''])}
       </details>
     `;
   }).join('');
@@ -397,14 +400,14 @@ async function onMemberChange() {
     }
   }
 
-  html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows, 'history-table')}`;
+  html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
   if (futureRows.length > 0) {
-    html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows, 'history-table')}`;
+    html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
   }
   if (sortedMilestones.length > 0) {
-    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]), 'history-table')}`;
+    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]), 'history-table', ['', '', 'stage-column-11'])}`;
   }
-  html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows, 'stage-table')}`;
+  html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows, 'stage-table', ['stage-column-11', ''])}`;
   html += `<h3>演目別出演回数ランキング</h3>${
     Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a])
     .map(stage =>
@@ -416,7 +419,7 @@ async function onMemberChange() {
           Object.entries(counts).map(([name, count]) => ({ name, count })),
           combinedMembers
         ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
-      })())}</details>`
+      })(), '', ['', '', 'stage-column-11']))}</details>`
     ).join('')
   }`;
 
