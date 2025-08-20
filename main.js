@@ -27,7 +27,7 @@ function getTodayString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// 出演履歴・今後・節目達成日・共演履歴用の省略（11文字）
+// 出演履歴・今後の出演予定・節目達成日・共演履歴用の省略（11文字）
 function truncateStageName(stageName) {
   const specialCases = {
     '難波愛～今、小嶋が思うこと～': '難波愛～今、小嶋が思…',
@@ -61,20 +61,20 @@ function truncateStageName(stageName) {
   return stageName.slice(0, cutIndex) + '…';
 }
 
-// 演目別出演回数用省略（17文字）
+// 演目別出演回数用省略（20文字）
 function truncateStageNameLong(stageName) {
   let lengthCount = 0;
   for (const ch of stageName) {
     lengthCount += /[ぁ-んァ-ン一-龥]/.test(ch) ? 1 : 0.5;
   }
-  if (lengthCount <= 17) return stageName;
+  if (lengthCount <= 20) return stageName;
 
   let count = 0;
   let cutIndex = 0;
   for (const ch of stageName) {
     count += /[ぁ-んァ-ン一-龥]/.test(ch) ? 1 : 0.5;
     cutIndex++;
-    if (count > 17) break;
+    if (count > 20) break;
   }
   return stageName.slice(0, cutIndex) + '…';
 }
@@ -169,7 +169,7 @@ function onGroupChange() {
   });
 }
 
-// ★ createTableHTML：columnClasses対応
+// ★ 修正版 createTableHTML：columnClasses 対応
 function createTableHTML(headers, rows, tableClass = '', columnClasses = []) {
   const classAttr = tableClass ? ` class="${tableClass}"` : '';
   return `
@@ -186,7 +186,7 @@ function createTableHTML(headers, rows, tableClass = '', columnClasses = []) {
   `;
 }
 
-// ランキング・日付ソート関数
+// 以下、既存のランキングソート・日付ソート関数
 function sortRankingWithTies(arr, groupList = []) {
   arr.sort((a, b) => {
     if (b.count !== a.count) return b.count - a.count;
@@ -221,7 +221,7 @@ function sortByDateAscendingWithIndex(a, b) {
   return a.index - b.index;
 }
 
-// 日付セレクト
+// 日付セレクト作成
 function populateDateSelect() {
   const startDate = new Date('2005-01-01');
   const today = new Date();
@@ -251,7 +251,7 @@ dateSelect.addEventListener('change', () => {
   if (memberSelect.value) onMemberChange();
 });
 
-// ★ onMemberChange：出演履歴・今後・節目・共演履歴で stage-column-11 を適用
+// onMemberChange 以下、演目列だけにクラス付与
 async function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
@@ -311,7 +311,7 @@ async function onMemberChange() {
 
   const sortedMilestones = milestones.sort((a, b) => b.milestone - a.milestone);
 
-  // 出演履歴テーブル
+  // 出演履歴
   const historyRows = memberPast.slice().sort(sortByDateDescendingWithIndex).map(p => [
     p.count,
     p.date,
@@ -319,7 +319,7 @@ async function onMemberChange() {
     p.time || ''
   ]);
 
-  // 今後の出演予定テーブル
+  // 今後
   const futureRows = memberFuture.map((p, i) => [
     totalCount + i + 1,
     p.date,
@@ -350,6 +350,7 @@ async function onMemberChange() {
     combinedMembers
   ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
 
+  // 共演履歴HTML
   const coHistoryHtml = coRanking.map(([rankStr, coMember, countStr]) => {
     const count = parseInt(countStr);
     const coPerformances = memberPast
@@ -364,7 +365,7 @@ async function onMemberChange() {
     return `
       <details>
         <summary>${coMember}</summary>
-        ${createTableHTML(['回数', '日付', '演目', '時間'], rows, 'co-history-table', [ '', '', 'stage-column-11', '' ])}
+        ${createTableHTML(['回数','日付','演目','時間'], rows, 'co-history-table', ['', '', 'stage-column-11',''])}
       </details>
     `;
   }).join('');
@@ -409,57 +410,45 @@ async function onMemberChange() {
     }
   }
 
-  html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
+  html += `<h3>出演履歴</h3>${createTableHTML(['回数','日付','演目','時間'], historyRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
   if (futureRows.length > 0) {
-    html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
+    html += `<h3>今後の出演予定</h3>${createTableHTML(['回数','日付','演目','時間'], futureRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
   }
   if (sortedMilestones.length > 0) {
-    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]), 'history-table', ['', '', 'stage-column-11'])}`;
+    html += `<h3>節目達成日</h3>${createTableHTML(['節目','日付','演目'], sortedMilestones.map(m => [m.milestone, m.date, m.stage]), 'history-table', ['', '', 'stage-column-11'])}`;
   }
-  html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows, 'stage-table', ['stage-column', ''])}`;
+  html += `<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'], stageRows, 'stage-table', ['stage-column-20',''])}`;
   html += `<h3>演目別出演回数ランキング</h3>${
     Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a])
     .map(stage =>
-      `<details><summary>${stage}</summary>${createTableHTML(['順位', '名前', '回数'], (function(){
+      `<details><summary>${stage}</summary>${createTableHTML(['順位','名前','回数'], (function(){
         const counts = {};
         pastPerformances.filter(p => p.stage.replace(targetGroup, '').trim() === stage)
           .forEach(p => p.members.forEach(m => counts[m] = (counts[m] || 0) + 1));
-        return sortRankingWithTies(
-          Object.entries(counts).map(([name, count]) => ({ name, count })),
-          combinedMembers
-        ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
-      })(), '', ['', '','stage-column'])}</details>`
+        return sortRankingWithTies(Object.entries(counts).map(([name, count]) => ({name,count})), combinedMembers).map(p => [`${p.rank}位`,p.name,`${p.count}回`]);
+      })())}</details>`
     ).join('')
   }`;
 
-  html += `<h3>年別出演回数</h3>${createTableHTML(['年', '回数'], yearRows)}`;
+  html += `<h3>年別出演回数</h3>${createTableHTML(['年','回数'], yearRows)}`;
   html += `<h3>年別出演回数ランキング</h3>${
-    Object.entries(yearRanking).sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([year, rows]) =>
-        `<details><summary>${year}年</summary>${createTableHTML(['順位', '名前', '回数'], rows)}</details>`
-      ).join('')
+    Object.entries(yearRanking).map(([year, ranks]) =>
+      `<details><summary>${year}年</summary>${createTableHTML(['順位','名前','回数'], ranks)}</details>`
+    ).join('')
   }`;
 
-  html += `<h3>共演回数ランキング</h3>${createTableHTML(['順位', '名前', '回数'], coRanking)}`;
+  html += `<h3>共演回数ランキング</h3>${createTableHTML(['順位','名前','回数'], coRanking)}`;
   html += `<h3>共演履歴</h3>${coHistoryHtml}`;
 
   output.innerHTML = html;
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  try {
-    await fetchGroups();
-    await fetchPerformanceFiles();
-    setupGroupOptions();
+  await fetchGroups();
+  await fetchPerformanceFiles();
+  setupGroupOptions();
+  populateDateSelect();
 
-    populateDateSelect();
-    dateSelect.value = getTodayString();
-
-    groupSelect.addEventListener('change', onGroupChange);
-    memberSelect.addEventListener('change', onMemberChange);
-  } catch (e) {
-    output.innerHTML = `<p style="color:red;">読み込みエラー: ${e.message}</p>`;
-    groupSelect.disabled = true;
-    memberSelect.disabled = true;
-  }
+  groupSelect.addEventListener('change', onGroupChange);
+  memberSelect.addEventListener('change', onMemberChange);
 });
