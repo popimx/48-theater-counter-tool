@@ -432,6 +432,33 @@ async function onMemberChange() {
   html += `<h3>共演履歴</h3>${coHistoryHtml}`;
 
   output.innerHTML = html;
+
+  // ★ 追加: 表の列幅を最大文字数に合わせる
+  adjustTableColumnWidths();
+}
+
+// 列幅調整関数
+function adjustTableColumnWidths() {
+  const tables = output.querySelectorAll('table');
+  tables.forEach(table => {
+    const colMaxWidths = [];
+    const rows = Array.from(table.rows);
+
+    // 各列ごとの最大幅を計算
+    rows.forEach(row => {
+      Array.from(row.cells).forEach((cell, idx) => {
+        const width = cell.scrollWidth;
+        colMaxWidths[idx] = Math.max(colMaxWidths[idx] || 0, width);
+      });
+    });
+
+    // 最大幅に揃える
+    rows.forEach(row => {
+      Array.from(row.cells).forEach((cell, idx) => {
+        cell.style.width = colMaxWidths[idx] + 'px';
+      });
+    });
+  });
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
