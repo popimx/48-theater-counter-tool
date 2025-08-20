@@ -77,14 +77,14 @@
       border-collapse: collapse;
       margin-bottom: 0.75rem;
       font-size: 0.95rem;
-      table-layout: fixed; /* 列幅固定 */
+      table-layout: auto; /* 可変幅 */
     }
 
     th, td {
       border: 1px solid #ccc;
       padding: 4px 6px;
       text-align: left;
-      white-space: nowrap;
+      white-space: normal;
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -108,6 +108,16 @@
 
     details[open] summary {
       color: #1976d2;
+    }
+
+    /* 演目名列幅固定 */
+    .stage-column {
+      width: 17ch; /* 演目別出演回数用 */
+      white-space: nowrap;
+    }
+    .stage-column-11 {
+      width: 11ch; /* 出演履歴・今後・節目・共演履歴用 */
+      white-space: nowrap;
     }
 
     #loading-message {
