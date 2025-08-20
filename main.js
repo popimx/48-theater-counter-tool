@@ -97,7 +97,7 @@ async function loadPerformancesByGroup(group) {
           ...p,
           index,
           members: p.members.map(m => m.trim()),
-          time: '' // 時間表記撤廃
+          time: '' // 時間表記非表示だがデータは保持
         })));
       } else console.warn(`ファイル取得失敗: ${file}`);
     } catch (e) {
@@ -237,10 +237,10 @@ async function onMemberChange() {
     output.textContent = '';
   }
 
-  let targetGroup = selectedGroup.replace(' 卒業生','');
+  const targetGroup = selectedGroup.replace(' 卒業生','');
   const combinedMembers = [...(groups[targetGroup]||[]), ...(groups[targetGroup+' 卒業生']||[])];
 
-  const todayStr = getSelectedDateString();
+  const todayStr = getTodayString(); // 常に今日まで
   const relevantPerformances = performances.filter(p=>p.stage.startsWith(targetGroup));
   const pastPerformances = relevantPerformances.filter(p=>p.date<=todayStr);
   const futurePerformances = relevantPerformances.filter(p=>p.date>todayStr);
@@ -274,14 +274,19 @@ async function onMemberChange() {
     p.count,
     p.date,
     truncateStageName(p.stage.replace(targetGroup,'').trim())
-    // 時間表記撤廃
   ]);
-  // 今後
-  const futureRows = memberFuture.map((p,i)=>[
-    totalCount+i+1,
-    p.date,
-    truncateStageName(p.stage.replace(targetGroup,'').trim())
-  ]);
+
+  // 今後（表示はdate-endが今日なら）
+  const futureRows = [];
+  if(dateSelect.value === todayStr){
+    memberFuture.forEach((p,i)=>{
+      futureRows.push([
+        totalCount+i+1,
+        p.date,
+        truncateStageName(p.stage.replace(targetGroup,'').trim())
+      ]);
+    });
+  }
 
   // 演目別出演回数
   const stageCountMap = {};
