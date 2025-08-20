@@ -284,14 +284,34 @@ function onMemberChange(){
     html+=`<h3>出演履歴</h3>${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}`;
     if(futureRows.length>0) html+=`<h3>今後の出演予定</h3>${createTableHTML(['回数','日付','演目'],futureRows,'history-table',['','','stage-column-11'])}`;
     if(sortedMilestones.length>0) html+=`<h3>節目達成日</h3>${createTableHTML(['節目','日付','演目'],sortedMilestones.map(m=>[m.milestone,m.date,m.stage]),'history-table',['','','stage-column-11'])}`;
-    html+=`<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'],stageRows,'stage-table',['stage-column-20',''])}`;
+
+    // 演目別出演回数（固定幅）
+    html+=`<h3>演目別出演回数</h3>${createTableHTML(
+      ['演目','回数'],
+      stageRows,
+      'stage-table',
+      ['stage-column-20','']
+    )}`;
+
+    // 演目別出演回数ランキング（可変幅）
     html+=`<h3>演目別出演回数ランキング</h3>${
-      Object.keys(stageCountMap).sort((a,b)=>stageCountMap[b]-stageCountMap[a]).map(stage=>`<details><summary>${stage}</summary>${createTableHTML(['順位','名前','回数'],(function(){
-        const counts={};
-        pastPerformances.filter(p=>p.stage.replace(targetGroup,'').trim()===stage).forEach(p=>p.members.forEach(m=>counts[m]=(counts[m]||0)+1));
-        return sortRankingWithTies(Object.entries(counts).map(([name,count])=>({name,count})),combinedMembers).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
-      })())}</details>`).join('')
+      Object.keys(stageCountMap)
+        .sort((a,b)=>stageCountMap[b]-stageCountMap[a])
+        .map(stage=>`<details><summary>${stage}</summary>${createTableHTML(
+          ['順位','名前','回数'],
+          (function(){
+            const counts={};
+            pastPerformances
+              .filter(p=>p.stage.replace(targetGroup,'').trim()===stage)
+              .forEach(p=>p.members.forEach(m=>counts[m]=(counts[m]||0)+1));
+            return sortRankingWithTies(
+              Object.entries(counts).map(([name,count])=>({name,count})),
+              combinedMembers
+            ).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
+          })()
+        )}</details>`).join('')
     }`;
+
     html+=`<h3>年別出演回数</h3>${createTableHTML(['年','回数'],yearRows)}`;
     html+=`<h3>年別出演回数ランキング</h3>${
       Object.entries(yearRanking).sort((a,b)=>b[0].localeCompare(a[0])).map(([year,ranks])=>`<details><summary>${year}年</summary>${createTableHTML(['順位','名前','回数'],ranks)}</details>`).join('')
