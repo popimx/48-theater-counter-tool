@@ -46,6 +46,7 @@
     }
     .date-selectors select {
       flex: 1;
+      width: 100%;
     }
     #output {
       background: #fff;
@@ -120,22 +121,18 @@
     <option value="">メンバーを選択</option>
   </select>
 
-  <div class="date-range">
-    <label>開始日：</label>
-    <div class="date-selectors">
-      <select id="year-start"></select>
-      <select id="month-start"></select>
-      <select id="day-start"></select>
-    </div>
+  <label>開始日：</label>
+  <div class="date-selectors">
+    <select id="year-start"></select>
+    <select id="month-start"></select>
+    <select id="day-start"></select>
   </div>
 
-  <div class="date-range">
-    <label>終了日：</label>
-    <div class="date-selectors">
-      <select id="year-end"></select>
-      <select id="month-end"></select>
-      <select id="day-end"></select>
-    </div>
+  <label>終了日：</label>
+  <div class="date-selectors">
+    <select id="year-end"></select>
+    <select id="month-end"></select>
+    <select id="day-end"></select>
   </div>
 
   <select id="date-start-select" style="display:none;"></select>
