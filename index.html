@@ -77,7 +77,7 @@
       border-collapse: collapse;
       margin-bottom: 0.75rem;
       font-size: 0.95rem;
-      table-layout: auto; /* 可変幅 */
+      table-layout: auto;
     }
 
     th, td {
@@ -110,13 +110,12 @@
       color: #1976d2;
     }
 
-    /* 演目名列幅固定 */
     .stage-column {
-      width: 20ch; /* 演目別出演回数用（余裕を持たせたサイズ） */
+      width: 20ch;
       white-space: nowrap;
     }
     .stage-column-11 {
-      width: 16.1ch; /* 出演履歴・今後・節目・共演履歴用 */
+      width: 16.1ch;
       white-space: nowrap;
     }
 
@@ -154,12 +153,7 @@
 
   <script src="main.js?t=<?=Date.now()?>"></script>
   <script>
-    const script = document.querySelector('script[src*="main.js"]');
-    if (script) {
-      const now = Date.now();
-      script.src = `main.js?t=${now}`;
-    }
-
+    // 年月日セレクトを2005-12-08〜今日まで構築
     function populateYearMonthDay() {
       const yearSelect = document.getElementById('year-select');
       const monthSelect = document.getElementById('month-select');
@@ -167,64 +161,62 @@
       const dateSelect = document.getElementById('date-select');
 
       const today = new Date();
-      const currentYear = today.getFullYear();
-      const currentMonth = today.getMonth() + 1;
-      const currentDay = today.getDate();
+      const startDate = new Date('2005-12-08');
 
-      for (let y = currentYear; y >= 2005; y--) {
+      // 年
+      for (let y = today.getFullYear(); y >= startDate.getFullYear(); y--) {
         const opt = document.createElement('option');
         opt.value = y;
         opt.textContent = `${y}年`;
         yearSelect.appendChild(opt);
       }
 
+      // 月
       for (let m = 1; m <= 12; m++) {
         const opt = document.createElement('option');
-        opt.value = m.toString().padStart(2, '0');
+        opt.value = m.toString().padStart(2,'0');
         opt.textContent = `${m}月`;
         monthSelect.appendChild(opt);
       }
 
+      // 日
       for (let d = 1; d <= 31; d++) {
         const opt = document.createElement('option');
-        opt.value = d.toString().padStart(2, '0');
+        opt.value = d.toString().padStart(2,'0');
         opt.textContent = `${d}日`;
         daySelect.appendChild(opt);
       }
 
-      yearSelect.value = currentYear;
-      monthSelect.value = currentMonth.toString().padStart(2, '0');
-      daySelect.value = currentDay.toString().padStart(2, '0');
+      // 初期値
+      yearSelect.value = startDate.getFullYear();
+      monthSelect.value = startDate.getMonth()+1 < 10 ? '0'+(startDate.getMonth()+1) : startDate.getMonth()+1;
+      daySelect.value = startDate.getDate() < 10 ? '0'+startDate.getDate() : startDate.getDate();
 
       function adjustDays() {
-        const year = parseInt(yearSelect.value, 10);
-        const month = parseInt(monthSelect.value, 10);
-        const lastDay = new Date(year, month, 0).getDate();
+        const y = parseInt(yearSelect.value,10);
+        const m = parseInt(monthSelect.value,10);
+        const lastDay = new Date(y,m,0).getDate();
 
-        while (daySelect.options.length > lastDay) {
-          daySelect.remove(daySelect.options.length - 1);
-        }
-        while (daySelect.options.length < lastDay) {
-          const d = daySelect.options.length + 1;
+        while(daySelect.options.length > lastDay) daySelect.remove(daySelect.options.length-1);
+        while(daySelect.options.length < lastDay){
           const opt = document.createElement('option');
-          opt.value = d.toString().padStart(2, '0');
+          const d = daySelect.options.length+1;
+          opt.value = d.toString().padStart(2,'0');
           opt.textContent = `${d}日`;
           daySelect.appendChild(opt);
         }
 
-        const selectedDate = new Date(`${year}-${monthSelect.value}-${daySelect.value}`);
-        if (selectedDate > today) {
+        let selected = new Date(`${y}-${monthSelect.value}-${daySelect.value}`);
+        if(selected>today){
           yearSelect.value = today.getFullYear();
-          monthSelect.value = (today.getMonth() + 1).toString().padStart(2, '0');
-          daySelect.value = today.getDate().toString().padStart(2, '0');
+          monthSelect.value = (today.getMonth()+1).toString().padStart(2,'0');
+          daySelect.value = today.getDate().toString().padStart(2,'0');
         }
-
         updateDateSelect();
       }
 
       function updateDateSelect() {
-        const selectedDate = `${yearSelect.value}-${monthSelect.value}-${daySelect.value}`;
-        dateSelect.value = selectedDate;
+        dateSelect.value = `${yearSelect.value}-${monthSelect.value}-${daySelect.value}`;
         dateSelect.dispatchEvent(new Event('change'));
       }
 
@@ -235,7 +227,7 @@
       updateDateSelect();
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', ()=>{
       populateYearMonthDay();
     });
   </script>
