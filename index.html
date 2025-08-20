@@ -21,19 +21,21 @@
       text-align: center;
       margin-bottom: 1rem;
     }
-    label {
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
       display: block;
       margin-bottom: 4px;
       font-weight: bold;
       font-size: 1rem;
       color: #333;
     }
-    select {
+    .form-group select {
       display: block;
       width: 100%;
       font-size: 1rem;
       padding: 6px 10px;
-      margin-bottom: 12px;
       border-radius: 6px;
       border: 1px solid #ccc;
       box-sizing: border-box;
@@ -42,8 +44,7 @@
     .date-selectors {
       display: flex;
       gap: 6px;
-      margin-bottom: 12px;
-      width: 100%; /* 追加 */
+      width: 100%;
     }
     .date-selectors select {
       flex: 1;
@@ -111,28 +112,36 @@
 <body>
   <header><h1>劇場公演 出演回数ツール</h1></header>
 
-  <label for="group-select">グループを選択：</label>
-  <select id="group-select">
-    <option value="">グループを選択</option>
-  </select>
-
-  <label for="member-select">メンバーを選択：</label>
-  <select id="member-select" disabled>
-    <option value="">メンバーを選択</option>
-  </select>
-
-  <label>開始日：</label>
-  <div class="date-selectors">
-    <select id="year-start"></select>
-    <select id="month-start"></select>
-    <select id="day-start"></select>
+  <div class="form-group">
+    <label for="group-select">グループを選択：</label>
+    <select id="group-select">
+      <option value="">グループを選択</option>
+    </select>
   </div>
 
-  <label>終了日：</label>
-  <div class="date-selectors">
-    <select id="year-end"></select>
-    <select id="month-end"></select>
-    <select id="day-end"></select>
+  <div class="form-group">
+    <label for="member-select">メンバーを選択：</label>
+    <select id="member-select" disabled>
+      <option value="">メンバーを選択</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>開始日：</label>
+    <div class="date-selectors">
+      <select id="year-start"></select>
+      <select id="month-start"></select>
+      <select id="day-start"></select>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>終了日：</label>
+    <div class="date-selectors">
+      <select id="year-end"></select>
+      <select id="month-end"></select>
+      <select id="day-end"></select>
+    </div>
   </div>
 
   <select id="date-start-select" style="display:none;"></select>
