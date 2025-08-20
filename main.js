@@ -27,7 +27,7 @@ function getTodayString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// 出演履歴・今後の出演予定・節目達成日用の省略（11文字）
+// 出演履歴・今後・節目達成日・共演履歴用の省略（11文字）
 function truncateStageName(stageName) {
   const specialCases = {
     '難波愛～今、小嶋が思うこと～': '難波愛～今、小嶋が思…',
@@ -169,7 +169,7 @@ function onGroupChange() {
   });
 }
 
-// ★ 修正版 createTableHTML：columnClasses 対応
+// ★ createTableHTML：columnClasses対応
 function createTableHTML(headers, rows, tableClass = '', columnClasses = []) {
   const classAttr = tableClass ? ` class="${tableClass}"` : '';
   return `
@@ -186,7 +186,7 @@ function createTableHTML(headers, rows, tableClass = '', columnClasses = []) {
   `;
 }
 
-// 以下、既存のランキングソート・日付ソート関数、省略していません
+// ランキング・日付ソート関数
 function sortRankingWithTies(arr, groupList = []) {
   arr.sort((a, b) => {
     if (b.count !== a.count) return b.count - a.count;
@@ -221,7 +221,7 @@ function sortByDateAscendingWithIndex(a, b) {
   return a.index - b.index;
 }
 
-// 日付セレクト作成
+// 日付セレクト
 function populateDateSelect() {
   const startDate = new Date('2005-01-01');
   const today = new Date();
@@ -251,7 +251,7 @@ dateSelect.addEventListener('change', () => {
   if (memberSelect.value) onMemberChange();
 });
 
-// onMemberChange 以下、演目列だけに 'stage-column' を付与
+// ★ onMemberChange：出演履歴・今後・節目・共演履歴で stage-column-11 を適用
 async function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
@@ -364,7 +364,7 @@ async function onMemberChange() {
     return `
       <details>
         <summary>${coMember}</summary>
-        ${createTableHTML(['回数', '日付', '演目', '時間'], rows, 'co-history-table', [ '', '', 'stage-column', '' ])}
+        ${createTableHTML(['回数', '日付', '演目', '時間'], rows, 'co-history-table', [ '', '', 'stage-column-11', '' ])}
       </details>
     `;
   }).join('');
@@ -409,12 +409,12 @@ async function onMemberChange() {
     }
   }
 
-  html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows, 'history-table', ['', '', 'stage-column', ''])}`;
+  html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
   if (futureRows.length > 0) {
-    html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows, 'history-table', ['', '', 'stage-column', ''])}`;
+    html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
   }
   if (sortedMilestones.length > 0) {
-    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]), 'history-table', ['', '', 'stage-column'])}`;
+    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]), 'history-table', ['', '', 'stage-column-11'])}`;
   }
   html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows, 'stage-table', ['stage-column', ''])}`;
   html += `<h3>演目別出演回数ランキング</h3>${
