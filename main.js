@@ -79,12 +79,14 @@ function truncateStageNameLong(stageName) {
   return stageName.slice(0, cutIndex) + '…';
 }
 
+// fetch groups.json
 async function fetchGroups() {
   const res = await fetch(GROUPS_URL);
   if (!res.ok) throw new Error('groups.jsonの取得に失敗しました');
   groups = await res.json();
 }
 
+// fetch performance_files.json
 async function fetchPerformanceFiles() {
   const res = await fetch(PERFORMANCE_FILES_URL);
   if (!res.ok) throw new Error('performance_files.jsonの取得に失敗しました');
@@ -167,19 +169,24 @@ function onGroupChange() {
   });
 }
 
-// 列ごとのクラス指定が可能なテーブル生成関数
+// ★ 修正版 createTableHTML：columnClasses 対応
 function createTableHTML(headers, rows, tableClass = '', columnClasses = []) {
   const classAttr = tableClass ? ` class="${tableClass}"` : '';
   return `
     <table${classAttr}>
-      <thead><tr>${headers.map((h, i) => `<th${columnClasses[i] ? ` class="${columnClasses[i]}"` : ''}>${h}</th>`).join('')}</tr></thead>
+      <thead><tr>${
+        headers.map((h, i) => `<th${columnClasses[i] ? ` class="${columnClasses[i]}"` : ''}>${h}</th>`).join('')
+      }</tr></thead>
       <tbody>
-        ${rows.map(row => `<tr>${row.map((cell, i) => `<td${columnClasses[i] ? ` class="${columnClasses[i]}"` : ''}>${cell}</td>`).join('')}</tr>`).join('')}
+        ${rows.map(row => `<tr>${
+          row.map((cell, i) => `<td${columnClasses[i] ? ` class="${columnClasses[i]}"` : ''}>${cell}</td>`).join('')
+        }</tr>`).join('')}
       </tbody>
     </table>
   `;
 }
 
+// 以下、既存のランキングソート・日付ソート関数、省略していません
 function sortRankingWithTies(arr, groupList = []) {
   arr.sort((a, b) => {
     if (b.count !== a.count) return b.count - a.count;
@@ -214,6 +221,7 @@ function sortByDateAscendingWithIndex(a, b) {
   return a.index - b.index;
 }
 
+// 日付セレクト作成
 function populateDateSelect() {
   const startDate = new Date('2005-01-01');
   const today = new Date();
@@ -243,6 +251,7 @@ dateSelect.addEventListener('change', () => {
   if (memberSelect.value) onMemberChange();
 });
 
+// onMemberChange 以下、演目列だけに 'stage-column' を付与
 async function onMemberChange() {
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
@@ -355,7 +364,7 @@ async function onMemberChange() {
     return `
       <details>
         <summary>${coMember}</summary>
-        ${createTableHTML(['回数', '日付', '演目', '時間'], rows, 'co-history-table', ['', '', 'stage-column-11', ''])}
+        ${createTableHTML(['回数', '日付', '演目', '時間'], rows, 'co-history-table', [ '', '', 'stage-column', '' ])}
       </details>
     `;
   }).join('');
@@ -400,14 +409,14 @@ async function onMemberChange() {
     }
   }
 
-  html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
+  html += `<h3>出演履歴</h3>${createTableHTML(['回数', '日付', '演目', '時間'], historyRows, 'history-table', ['', '', 'stage-column', ''])}`;
   if (futureRows.length > 0) {
-    html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows, 'history-table', ['', '', 'stage-column-11', ''])}`;
+    html += `<h3>今後の出演予定</h3>${createTableHTML(['回数', '日付', '演目', '時間'], futureRows, 'history-table', ['', '', 'stage-column', ''])}`;
   }
   if (sortedMilestones.length > 0) {
-    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]), 'history-table', ['', '', 'stage-column-11'])}`;
+    html += `<h3>節目達成日</h3>${createTableHTML(['節目', '日付', '演目'], sortedMilestones.map(m => [`${m.milestone}回`, m.date, m.stage]), 'history-table', ['', '', 'stage-column'])}`;
   }
-  html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows, 'stage-table', ['stage-column-11', ''])}`;
+  html += `<h3>演目別出演回数</h3>${createTableHTML(['演目', '回数'], stageRows, 'stage-table', ['stage-column', ''])}`;
   html += `<h3>演目別出演回数ランキング</h3>${
     Object.keys(stageCountMap).sort((a, b) => stageCountMap[b] - stageCountMap[a])
     .map(stage =>
@@ -419,7 +428,7 @@ async function onMemberChange() {
           Object.entries(counts).map(([name, count]) => ({ name, count })),
           combinedMembers
         ).map(p => [`${p.rank}位`, p.name, `${p.count}回`]);
-      })(), '', ['', '', 'stage-column-11']))}</details>`
+      })(), '', ['', '','stage-column'])}</details>`
     ).join('')
   }`;
 
