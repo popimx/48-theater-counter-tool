@@ -5,7 +5,6 @@ let groups = {};
 let groupFiles = {};
 let performances = [];
 
-// 卒業生グループの対応
 const GROUP_ALIAS = {
   'AKB48 卒業生': 'AKB48',
   'SKE48 卒業生': 'SKE48',
@@ -15,7 +14,7 @@ const GROUP_ALIAS = {
   'STU48 卒業生': 'STU48'
 };
 
-// DOM要素
+// DOM
 const groupSelect = document.getElementById('group-select');
 const memberSelect = document.getElementById('member-select');
 const output = document.getElementById('output');
@@ -25,20 +24,17 @@ const startSelectors = {
   month: document.getElementById('month-start'),
   day: document.getElementById('day-start')
 };
-
 const endSelectors = {
   year: document.getElementById('year-end'),
   month: document.getElementById('month-end'),
   day: document.getElementById('day-end')
 };
 
-// 今日の日付文字列
 function getTodayString() {
   const today = new Date();
   return `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 }
 
-// 演目名省略（履歴用）
 function truncateStageName(stageName) {
   const specialCases = {
     '難波愛～今、小嶋が思うこと～': '難波愛～今、小嶋が思…',
@@ -55,7 +51,7 @@ function truncateStageName(stageName) {
   if(specialCases[stageName]) return specialCases[stageName];
 
   const hasJapanese = /[ぁ-んァ-ン一-龥]/.test(stageName);
-  const limit = hasJapanese ? 12 : 9;
+  const limit = hasJapanese ? 12 : 9; // 日本語ありなら12文字で省略
   let count=0, cutIndex=0;
   for(const ch of stageName){
     count += hasJapanese ? 1 : 0.5;
@@ -65,7 +61,6 @@ function truncateStageName(stageName) {
   return count>limit ? stageName.slice(0,cutIndex)+'…' : stageName;
 }
 
-// 演目名省略（演目別回数用）
 function truncateStageNameLong(stageName){
   let count=0, cutIndex=0;
   for(const ch of stageName){
@@ -76,21 +71,18 @@ function truncateStageNameLong(stageName){
   return count>17 ? stageName.slice(0,cutIndex)+'…' : stageName;
 }
 
-// groups.jsonの取得
 async function fetchGroups(){
   const res = await fetch(GROUPS_URL);
   if(!res.ok) throw new Error('groups.jsonの取得に失敗しました');
   groups = await res.json();
 }
 
-// performance_files.jsonの取得
 async function fetchPerformanceFiles(){
   const res = await fetch(PERFORMANCE_FILES_URL);
   if(!res.ok) throw new Error('performance_files.jsonの取得に失敗しました');
   groupFiles = await res.json();
 }
 
-// 指定グループの公演データ読み込み
 async function loadPerformancesByGroup(group){
   if(!groupFiles[group]) return [];
   const relatedGroups = [group];
@@ -115,7 +107,6 @@ async function loadPerformancesByGroup(group){
   return results;
 }
 
-// グループ選択肢を作成
 function setupGroupOptions(){
   Object.keys(groups).forEach(group=>{
     const opt = document.createElement('option');
@@ -125,7 +116,6 @@ function setupGroupOptions(){
   });
 }
 
-// グループ選択変更時
 function onGroupChange(){
   const selectedGroup = groupSelect.value;
   memberSelect.innerHTML = '<option value="">メンバーを選択</option>';
@@ -151,7 +141,6 @@ function onGroupChange(){
   });
 }
 
-// 汎用テーブル生成（列クラス対応）
 function createTableHTML(headers, rows, tableClass='', columnClasses=[]){
   const classAttr = tableClass ? ` class="${tableClass}"` : '';
   return `<table${classAttr}><thead><tr>${
@@ -161,7 +150,6 @@ function createTableHTML(headers, rows, tableClass='', columnClasses=[]){
   }</tbody></table>`;
 }
 
-// ランキングソート（同点対応）
 function sortRankingWithTies(arr, groupList=[]){
   arr.sort((a,b)=>{
     if(b.count !== a.count) return b.count - a.count;
@@ -182,24 +170,20 @@ function sortRankingWithTies(arr, groupList=[]){
   return arr;
 }
 
-// 日付ソート（降順）
 function sortByDateDescendingWithIndex(a,b){
   if(a.date!==b.date) return b.date.localeCompare(a.date);
   return b.index - a.index;
 }
 
-// 日付ソート（昇順）
 function sortByDateAscendingWithIndex(a,b){
   if(a.date!==b.date) return a.date.localeCompare(b.date);
   return a.index - b.index;
 }
 
-// 年月日セレクト値を文字列に
 function getSelectedDateString(selectors){
   return `${selectors.year.value}-${selectors.month.value}-${selectors.day.value}`;
 }
 
-// メンバー選択時処理
 function onMemberChange(){
   const selectedGroup = groupSelect.value;
   const member = memberSelect.value;
@@ -221,7 +205,6 @@ function onMemberChange(){
     const startDateStr = getSelectedDateString(startSelectors);
     const endDateStr = getSelectedDateString(endSelectors);
     const todayStr = getTodayString();
-
     const targetGroup = selectedGroup.replace(' 卒業生','');
     const combinedMembers = [...(groups[targetGroup]||[]), ...(groups[targetGroup+' 卒業生']||[])];
 
@@ -229,18 +212,12 @@ function onMemberChange(){
     const pastPerformances = relevantPerformances.filter(p=>p.date>=startDateStr && p.date<=endDateStr && p.date<=todayStr);
     const futurePerformances = relevantPerformances.filter(p=>p.date>todayStr);
 
-    // ■ 最新順に降順ソート（出演履歴）
-    const memberPast = pastPerformances
-      .filter(p=>p.members.includes(member))
-      .sort(sortByDateDescendingWithIndex)
-      .map((p,i)=>({...p,count:i+1}));
+    // 最新順にソート
+    const memberPastDesc = pastPerformances.filter(p=>p.members.includes(member))
+      .sort(sortByDateDescendingWithIndex);
+    const totalCount = memberPastDesc.length;
 
-    const totalCount = memberPast.length;
-
-    // 将来公演は昇順（未来順）
-    const memberFuture = futurePerformances
-      .filter(p=>p.members.includes(member))
-      .sort(sortByDateAscendingWithIndex);
+    const memberFuture = futurePerformances.filter(p=>p.members.includes(member)).sort(sortByDateAscendingWithIndex);
 
     const nextMilestone = Math.ceil(totalCount/100)*100;
     const remaining = nextMilestone - totalCount;
@@ -255,19 +232,23 @@ function onMemberChange(){
     // 節目達成日リスト
     const milestones=[];
     for(let m=100;m<=totalCount;m+=100){
-      const perf=memberPast.find((p,i)=>i===totalCount-m); // 最新順対応
+      const perf=memberPastDesc[totalCount-m]; // 最新順対応
       if(perf){
-        milestones.push({date:perf.date,stage:truncateStageName(perf.stage.replace(targetGroup,'')),milestone:m});
+        milestones.push({date:perf.date,stage:truncateStageName(perf.stage.replace(targetGroup,'').trim()),milestone:m});
       }
     }
 
-    // 出演履歴テーブル（最新順）
-    const historyRows = memberPast.map(p=>[p.count,p.date,truncateStageName(p.stage.replace(targetGroup,''))]);
-    const futureRows = (endDateStr===todayStr)?memberFuture.map((p,i)=>[totalCount+i+1,p.date,truncateStageName(p.stage.replace(targetGroup,''))]):[];
+    const sortedMilestones = milestones.sort((a,b)=>b.milestone-a.milestone);
+
+    // 出演履歴（最新順）
+    const historyRows = memberPastDesc.map((p,i)=>[totalCount-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
+
+    // 今後の出演予定
+    const futureRows = (endDateStr===todayStr)?memberFuture.map((p,i)=>[totalCount+i+1,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]):[];
 
     // 演目別回数
     const stageCountMap={};
-    memberPast.forEach(p=>{
+    memberPastDesc.forEach(p=>{
       const s=p.stage.replace(targetGroup,'').trim();
       stageCountMap[s]=(stageCountMap[s]||0)+1;
     });
@@ -275,21 +256,21 @@ function onMemberChange(){
 
     // 共演回数
     const coCounts={};
-    memberPast.forEach(p=>p.members.forEach(m=>{
+    memberPastDesc.forEach(p=>p.members.forEach(m=>{
       if(m!==member) coCounts[m]=(coCounts[m]||0)+1;
     }));
     const coRanking = sortRankingWithTies(Object.entries(coCounts).map(([name,count])=>({name,count})),combinedMembers).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
 
     const coHistoryHtml = coRanking.map(([rankStr,coMember,countStr])=>{
       const count=parseInt(countStr);
-      const coPerformances=memberPast.filter(p=>p.members.includes(coMember)).sort(sortByDateDescendingWithIndex);
-      const rows=coPerformances.map((p,i)=>[count-i,p.date,truncateStageName(p.stage.replace(targetGroup,''))]);
+      const coPerformances=memberPastDesc.filter(p=>p.members.includes(coMember)).sort(sortByDateDescendingWithIndex);
+      const rows=coPerformances.map((p,i)=>[count-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
       return `<details><summary>${coMember}</summary>${createTableHTML(['回数','日付','演目'],rows,'co-history-table',['','','stage-column-11'])}</details>`;
     }).join('');
 
     // 年別出演回数
     const yearCounts={};
-    memberPast.forEach(p=>{ const y=p.date.slice(0,4); yearCounts[y]=(yearCounts[y]||0)+1; });
+    memberPastDesc.forEach(p=>{ const y=p.date.slice(0,4); yearCounts[y]=(yearCounts[y]||0)+1; });
     const yearRows=Object.entries(yearCounts).sort((a,b)=>b[0].localeCompare(a[0])).map(([year,count])=>[`${year}年`,`${count}回`]);
 
     // 年別ランキング
@@ -307,13 +288,13 @@ function onMemberChange(){
       if(milestoneFutureEvent){
         const d=new Date(milestoneFutureEvent.date);
         const dateStr=`${d.getMonth()+1}月${d.getDate()}日`;
-        html+=`<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">${dateStr}の ${truncateStageName(milestoneFutureEvent.stage.replace(targetGroup,''))}公演 で達成予定</div>`;
+        html+=`<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">${dateStr}の ${truncateStageName(milestoneFutureEvent.stage.replace(targetGroup,'').trim())}公演 で達成予定</div>`;
       }
     }
 
     html+=`<h3>出演履歴</h3>${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}`;
     if(futureRows.length>0) html+=`<h3>今後の出演予定</h3>${createTableHTML(['回数','日付','演目'],futureRows,'history-table',['','','stage-column-11'])}`;
-    if(milestones.length>0) html+=`<h3>節目達成日</h3>${createTableHTML(['節目','日付','演目'],milestones,'history-table',['','','stage-column-11'])}`;
+    if(sortedMilestones.length>0) html+=`<h3>節目達成日</h3>${createTableHTML(['節目','日付','演目'],sortedMilestones.map(m=>[m.milestone,m.date,m.stage]),'history-table',['','','stage-column-11'])}`;
     html+=`<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'],stageRows,'stage-table',['stage-column-20',''])}`;
     html+=`<h3>演目別出演回数ランキング</h3>${
       Object.keys(stageCountMap).sort((a,b)=>stageCountMap[b]-stageCountMap[a]).map(stage=>`<details><summary>${stage}</summary>${createTableHTML(['順位','名前','回数'],(function(){
@@ -333,7 +314,6 @@ function onMemberChange(){
   }
 }
 
-// 初期化
 window.addEventListener('DOMContentLoaded',async ()=>{
   await fetchGroups();
   await fetchPerformanceFiles();
