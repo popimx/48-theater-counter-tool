@@ -239,7 +239,7 @@ function onMemberChange(){
 
     // 出演履歴
     const historyRows = memberPastDesc.map((p,i)=>[totalCount-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
-    const futureRows = (endDateStr===todayStr)?memberFuture.map((p,i)=>[totalCount+i+1,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]):[];
+    const futureRows = memberFuture.map((p,i)=>[totalCount+i+1,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
 
     // 演目別出演回数
     const stageCountMap={};
@@ -259,7 +259,6 @@ function onMemberChange(){
 
     // 共演履歴のHTML
     const coHistoryHtml = coRanking.map(([rankStr,coMember,countStr])=>{
-      const count=parseInt(countStr);
       const coPerformances=memberPastDesc.filter(p=>p.members.includes(coMember)).sort(sortByDateDescendingWithIndex);
       
       // 演目別共演回数
@@ -268,10 +267,10 @@ function onMemberChange(){
       const coStageRows=Object.entries(coStageMap).sort((a,b)=>b[1]-a[1]).map(([s,c])=>[truncateStageNameLong(s),`${c}回`]);
       
       // 共演履歴
-      const rows=coPerformances.map((p,i)=>[count-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
+      const rows=coPerformances.map((p,i)=>[i+1,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
 
-      return `<details open style="margin-bottom:8px;">
-        <summary class="highlight" style="color:#1976d2;font-weight:bold;">共演回数：${count}回 ${coMember}</summary>
+      return `<details style="margin-bottom:8px;">
+        <summary class="highlight" style="color:#1976d2;font-weight:bold;">${coMember}</summary>
         <div style="margin:6px 0 4px 0;font-weight:bold;">演目別共演回数</div>
         ${createTableHTML(['演目','回数'],coStageRows,'stage-table',['stage-column-20',''])}
         <div style="margin:6px 0 4px 0;font-weight:bold;">共演履歴</div>
@@ -304,7 +303,7 @@ function onMemberChange(){
     }
 
     html+=`<details open><summary>出演履歴</summary>${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}</details>`;
-    if(futureRows.length>0) html+=createTableHTML(['回数','日付','演目'],futureRows,'future-table',['','','stage-column-11']); // 今後の出演予定はトグルなし
+    html+=`<div style="font-weight:bold;margin-top:8px;margin-bottom:4px;">今後の出演予定</div>${createTableHTML(['回数','日付','演目'],futureRows,'future-table',['','','stage-column-11'])}`;
 
     html+=`<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'],stageRows,'stage-table',['stage-column-20',''])}`;
     html+=`<h3>年別出演回数</h3>${createTableHTML(['年','回数'],yearRows,'year-table',['',''])}`;
