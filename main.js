@@ -1,4 +1,4 @@
- const GROUPS_URL = './src/data/groups.json';
+const GROUPS_URL = './src/data/groups.json';
 const PERFORMANCE_FILES_URL = './src/data/performance_files.json';
 
 let groups = {};
@@ -254,27 +254,28 @@ function onMemberChange(){
     memberPastDesc.forEach(p=>p.members.forEach(m=>{
       if(m!==member) coCounts[m]=(coCounts[m]||0)+1;
     }));
-    const coRanking = sortRankingWithTies(Object.entries(coCounts).map(([name,count])=>({name,count})),combinedMembers).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
+    const coRanking = sortRankingWithTies(Object.entries(coCounts).map(([name,count])=>({name,count})),combinedMembers)
+      .map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
 
-    // 共演履歴 HTML
+    // 共演履歴のHTML
     const coHistoryHtml = coRanking.map(([rankStr,coMember,countStr])=>{
       const count=parseInt(countStr);
       const coPerformances=memberPastDesc.filter(p=>p.members.includes(coMember)).sort(sortByDateDescendingWithIndex);
-
+      
       // 演目別共演回数
-      const stageCoMap={};
-      coPerformances.forEach(p=>{ const s=p.stage.replace(targetGroup,'').trim(); stageCoMap[s]=(stageCoMap[s]||0)+1; });
-      const stageCoRows=Object.entries(stageCoMap).sort((a,b)=>b[1]-a[1]).map(([s,c])=>[truncateStageNameLong(s),`${c}回`]);
+      const coStageMap={};
+      coPerformances.forEach(p=>{ const s=p.stage.replace(targetGroup,'').trim(); coStageMap[s]=(coStageMap[s]||0)+1; });
+      const coStageRows=Object.entries(coStageMap).sort((a,b)=>b[1]-a[1]).map(([s,c])=>[truncateStageNameLong(s),`${c}回`]);
+      
+      // 共演履歴
+      const rows=coPerformances.map((p,i)=>[count-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
 
-      const rows = coPerformances.map((p,i)=>[count-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
-      return `<details open>
-        <summary><span class="highlight">共演回数：${count}回</span> ${coMember}</summary>
-        <div style="margin-top:4px; margin-bottom:4px;">
-          <h4>演目別共演回数</h4>
-          ${createTableHTML(['演目','回数'],stageCoRows,'stage-table',['stage-column-20',''])}
-          <h4>共演履歴</h4>
-          ${createTableHTML(['回数','日付','演目'],rows,'co-history-table',['','','stage-column-11'])}
-        </div>
+      return `<details open style="margin-bottom:8px;">
+        <summary class="highlight">共演回数：${count}回 ${coMember}</summary>
+        <div style="margin:6px 0 4px 0;">演目別共演回数</div>
+        ${createTableHTML(['演目','回数'],coStageRows,'stage-table',['stage-column-20',''])}
+        <div style="margin:6px 0 4px 0;">共演履歴</div>
+        ${createTableHTML(['回数','日付','演目'],rows,'co-history-table',['','','stage-column-11'])}
       </details>`;
     }).join('');
 
@@ -283,14 +284,15 @@ function onMemberChange(){
     memberPastDesc.forEach(p=>{ const y=p.date.slice(0,4); yearCounts[y]=(yearCounts[y]||0)+1; });
     const yearRows=Object.entries(yearCounts).sort((a,b)=>b[0].localeCompare(a[0])).map(([year,count])=>[`${year}年`,`${count}回`]);
 
+    // 年別出演回数ランキング
     const yearRanking={};
     Object.keys(yearCounts).forEach(year=>{
       const counts={};
       pastPerformances.filter(p=>p.date.startsWith(year)).forEach(p=>p.members.forEach(m=>counts[m]=(counts[m]||0)+1));
-      yearRanking[year]=sortRankingWithTies(Object.entries(counts).map(([name,count])=>({name,count})),combinedMembers).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
+      yearRanking[year]=sortRankingWithTies(Object.entries(counts).map(([name,count])=>({name,count})),combinedMembers)
+        .map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
     });
 
-    // HTML 出力
     let html=`<div class="highlight">総出演回数：${totalCount}回</div>`;
     if(remaining>0 && remaining<=10){
       html+=`<div style="font-size:1rem;color:#000;margin-top:-8px;margin-bottom:2px;">${nextMilestone}回公演まであと${remaining}回</div>`;
@@ -301,28 +303,36 @@ function onMemberChange(){
       }
     }
 
-    html+=`<h3>出演履歴</h3><details open>${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}</details>`;
-    if(futureRows.length>0) html+=`<h3>今後の出演予定</h3><details open>${createTableHTML(['回数','日付','演目'],futureRows,'history-table',['','','stage-column-11'])}</details>`;
-    if(sortedMilestones.length>0){
-      html+=`<h3>節目達成日</h3><details open>${createTableHTML(['節目','日付','演目'],sortedMilestones.map(m=>[`${m.milestone}回`,m.date,m.stage]),'milestone-table',['','','stage-column-11'])}</details>`;
-    }
+    html+=`<details open><summary>出演履歴</summary>${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}</details>`;
+    if(futureRows.length>0) html+=`<details open><summary>今後の出演予定</summary>${createTableHTML(['回数','日付','演目'],futureRows,'future-table',['','','stage-column-11'])}</details>`;
+
     html+=`<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'],stageRows,'stage-table',['stage-column-20',''])}`;
-    html+=`<h3>共演回数ランキング</h3>${coHistoryHtml}`;
     html+=`<h3>年別出演回数</h3>${createTableHTML(['年','回数'],yearRows,'year-table',['',''])}`;
 
-    output.innerHTML = html;
+    // 年別ランキング
+    Object.entries(yearRanking).forEach(([year,rows])=>{
+      html+=`<h3>${year}年 出演回数ランキング</h3>${createTableHTML(['順位','メンバー','回数'],rows,'year-rank-table',['','',''])}`;
+    });
+
+    // 共演ランキング
+    html+=`<h3>共演回数ランキング</h3>${createTableHTML(['順位','メンバー','回数'],coRanking,'co-rank-table',['','',''])}`;
+
+    // 各メンバーごとの共演情報
+    html+=`<h3>共演履歴</h3>${coHistoryHtml}`;
+
+    output.innerHTML=html;
   }
 }
 
-// イベント
-document.addEventListener('DOMContentLoaded',()=>{
-  fetchGroups().then(()=>{
-    setupGroupOptions();
-  });
-});
+document.addEventListener('DOMContentLoaded', async ()=>{
+  await fetchGroups();
+  await fetchPerformanceFiles();
+  setupGroupOptions();
 
-groupSelect.addEventListener('change', onGroupChange);
-memberSelect.addEventListener('change', onMemberChange);
-['year-start','month-start','day-start','year-end','month-end','day-end'].forEach(id=>{
-  document.getElementById(id).addEventListener('change',()=>{ if(memberSelect.value) onMemberChange(); });
+  groupSelect.addEventListener('change', onGroupChange);
+  memberSelect.addEventListener('change', onMemberChange);
+
+  ['year-start','month-start','day-start','year-end','month-end','day-end'].forEach(id=>{
+    document.getElementById(id).addEventListener('change',()=>{ if(memberSelect.value) onMemberChange(); });
+  });
 });
