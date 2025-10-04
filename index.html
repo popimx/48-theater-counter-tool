@@ -69,17 +69,12 @@
       font-size: 1.05rem;
       color: #333;
     }
-    h4 {
-      margin-top: 0.5rem;
-      margin-bottom: 0.3rem;
-      font-weight: bold;
-      font-size: 0.95rem;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 0.75rem;
       font-size: 0.95rem;
+      line-height: 1.4;
       table-layout: auto;
     }
     th, td {
@@ -118,53 +113,19 @@
       margin-top: 1rem;
     }
 
-    /* 共演履歴トグル統一 */
-    .co-member details {
-      margin-bottom: 6px;
-    }
-
-    .co-member summary {
-      font-weight: bold;
-      cursor: pointer;
-      padding: 0.3rem 0;
-      font-size: 0.95rem;      
-      letter-spacing: 0.05em;
-    }
-
-    .co-member details[open] summary {
-      color: #1976d2;
-    }
-
+    /* 共演履歴トグル内の文字サイズ・行間・文字間をサイト全体と統一 */
     .co-member .co-content {
-      font-size: 0.95rem;
-      line-height: 1.4;
-      letter-spacing: 0.05em;
-      margin-left: 12px;
+      font-size: 0.95rem;       /* table と同じ */
+      line-height: 1.4;         /* table と同じ */
+      letter-spacing: normal;    /* 文字間も統一 */
+      margin-left: 12px;         /* トグル展開時のインデント */
     }
-
     .co-member .co-content table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 0.95rem;
-      letter-spacing: 0.05em;
-      margin-bottom: 4px;
+      font-size: inherit;
+      line-height: inherit;
+      letter-spacing: inherit;
+      margin-bottom: 0.75rem;
     }
-
-    .co-member .co-content table th,
-    .co-member .co-content table td {
-      border: 1px solid #ccc;
-      padding: 4px 6px;
-      text-align: left;
-      white-space: normal;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .co-member .co-content .stage-column-11 {
-      width: 16.5ch;
-      white-space: nowrap;
-    }
-
   </style>
 </head>
 <body>
