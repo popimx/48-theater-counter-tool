@@ -271,10 +271,10 @@ function onMemberChange(){
       const rows=coPerformances.map((p,i)=>[count-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
 
       return `<details open style="margin-bottom:8px;">
-        <summary class="highlight">共演回数：${count}回 ${coMember}</summary>
-        <div style="margin:6px 0 4px 0;">演目別共演回数</div>
+        <summary class="highlight" style="color:#1976d2;font-weight:bold;">共演回数：${count}回 ${coMember}</summary>
+        <div style="margin:6px 0 4px 0;font-weight:bold;">演目別共演回数</div>
         ${createTableHTML(['演目','回数'],coStageRows,'stage-table',['stage-column-20',''])}
-        <div style="margin:6px 0 4px 0;">共演履歴</div>
+        <div style="margin:6px 0 4px 0;font-weight:bold;">共演履歴</div>
         ${createTableHTML(['回数','日付','演目'],rows,'co-history-table',['','','stage-column-11'])}
       </details>`;
     }).join('');
@@ -304,14 +304,14 @@ function onMemberChange(){
     }
 
     html+=`<details open><summary>出演履歴</summary>${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}</details>`;
-    if(futureRows.length>0) html+=`<details open><summary>今後の出演予定</summary>${createTableHTML(['回数','日付','演目'],futureRows,'future-table',['','','stage-column-11'])}</details>`;
+    if(futureRows.length>0) html+=createTableHTML(['回数','日付','演目'],futureRows,'future-table',['','','stage-column-11']); // 今後の出演予定はトグルなし
 
     html+=`<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'],stageRows,'stage-table',['stage-column-20',''])}`;
     html+=`<h3>年別出演回数</h3>${createTableHTML(['年','回数'],yearRows,'year-table',['',''])}`;
 
-    // 年別ランキング
-    Object.entries(yearRanking).forEach(([year,rows])=>{
-      html+=`<h3>${year}年 出演回数ランキング</h3>${createTableHTML(['順位','メンバー','回数'],rows,'year-rank-table',['','',''])}`;
+    // 年別ランキング（年だけ表示）
+    Object.entries(yearRanking).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([year,rows])=>{
+      html+=`<details><summary><b>${year}年</b></summary>${createTableHTML(['順位','メンバー','回数'],rows,'year-rank-table',['','',''])}</details>`;
     });
 
     // 共演ランキング
