@@ -16,14 +16,17 @@
       margin-left: auto;
       margin-right: auto;
     }
+
     header h1 {
       font-size: 1.4rem;
       text-align: center;
       margin-bottom: 1rem;
     }
+
     .form-group {
       margin-bottom: 12px;
     }
+
     .form-group label {
       display: block;
       margin-bottom: 4px;
@@ -31,6 +34,7 @@
       font-size: 1rem;
       color: #333;
     }
+
     .form-group select {
       display: block;
       width: 100%;
@@ -42,41 +46,46 @@
       box-sizing: border-box;
       background-color: white;
     }
+
     .date-selectors {
       display: flex;
       gap: 6px;
       width: 100%;
     }
+
     .date-selectors select {
       flex: 1;
       padding: 6px 10px;
       margin: 0;
     }
-    #output {
+
+    #output, #co-starring-history {
       background: #fff;
       padding: 10px;
       border-radius: 6px;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       white-space: normal;
       line-height: 1.4;
-      margin-top: 8px;
+      margin-top: 1rem;
       min-height: 2em;
     }
+
     h3 {
       margin-top: 1rem;
-      margin-bottom: 0.5rem;
+      margin-bottom: 1rem;
       font-weight: bold;
       font-size: 1.05rem;
       color: #333;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 0.75rem;
       font-size: 0.95rem;
-      line-height: 1.4;
       table-layout: auto;
     }
+
     th, td {
       border: 1px solid #ccc;
       padding: 4px 6px;
@@ -85,46 +94,38 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
     thead {
       background-color: #f2f2f2;
     }
+
     .highlight {
       font-weight: bold;
       color: #1976d2;
       font-size: 1.1rem;
-      margin: 0.5rem 0;
+      margin: 1rem 0;
     }
+
     details summary {
       font-weight: bold;
       cursor: pointer;
       padding: 0.3rem 0;
     }
+
     details[open] summary {
       color: #1976d2;
     }
+
     .stage-column { width: 18ch; white-space: nowrap; }
     .stage-column-11 { width: 16.5ch; white-space: nowrap; }
     .stage-column-20 { width: 25ch; white-space: nowrap; }
     .time-column { display: none; }
+
     #loading-message {
       text-align: center;
       font-size: 0.95rem;
       color: #666;
       margin-top: 1rem;
-    }
-
-    /* 共演履歴トグル内の文字サイズ・行間・文字間をサイト全体と統一 */
-    .co-member .co-content {
-      font-size: 0.95rem;       /* table と同じ */
-      line-height: 1.4;         /* table と同じ */
-      letter-spacing: normal;    /* 文字間も統一 */
-      margin-left: 12px;         /* トグル展開時のインデント */
-    }
-    .co-member .co-content table {
-      font-size: inherit;
-      line-height: inherit;
-      letter-spacing: inherit;
-      margin-bottom: 0.75rem;
     }
   </style>
 </head>
