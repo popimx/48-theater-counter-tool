@@ -1,4 +1,4 @@
-const GROUPS_URL = './src/data/groups.json';
+ const GROUPS_URL = './src/data/groups.json';
 const PERFORMANCE_FILES_URL = './src/data/performance_files.json';
 
 let groups = {};
@@ -228,6 +228,19 @@ function onMemberChange(){
       }
     }
 
+    const milestones=[];
+    for(let m=100;m<=totalCount;m+=100){
+      const perf=memberPastDesc[totalCount-m];
+      if(perf){
+        milestones.push({date:perf.date,stage:truncateStageName(perf.stage.replace(targetGroup,'').trim()),milestone:m});
+      }
+    }
+    const sortedMilestones = milestones.sort((a,b)=>b.milestone-a.milestone);
+
+    // 出演履歴 (トグルのみ)
+    const historyRows = memberPastDesc.map((p,i)=>[totalCount-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
+    const futureRows = (endDateStr===todayStr)?memberFuture.map((p,i)=>[totalCount+i+1,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]):[];
+
     // 演目別出演回数
     const stageCountMap={};
     memberPastDesc.forEach(p=>{
@@ -235,6 +248,35 @@ function onMemberChange(){
       stageCountMap[s]=(stageCountMap[s]||0)+1;
     });
     const stageRows=Object.entries(stageCountMap).sort((a,b)=>b[1]-a[1]).map(([s,c])=>[truncateStageNameLong(s),`${c}回`]);
+
+    // 共演回数
+    const coCounts={};
+    memberPastDesc.forEach(p=>p.members.forEach(m=>{
+      if(m!==member) coCounts[m]=(coCounts[m]||0)+1;
+    }));
+    const coRanking = sortRankingWithTies(Object.entries(coCounts).map(([name,count])=>({name,count})),combinedMembers)
+      .map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
+
+    // 各メンバー共演履歴
+    const coHistoryHtml = coRanking.map(([rankStr,coMember,countStr])=>{
+      const coPerformances=memberPastDesc.filter(p=>p.members.includes(coMember)).sort(sortByDateDescendingWithIndex);
+
+      // 演目別共演回数
+      const coStageMap={};
+      coPerformances.forEach(p=>{ const s=p.stage.replace(targetGroup,'').trim(); coStageMap[s]=(coStageMap[s]||0)+1; });
+      const coStageRows=Object.entries(coStageMap).sort((a,b)=>b[1]-a[1]).map(([s,c])=>[truncateStageNameLong(s),`${c}回`]);
+
+      // 共演履歴
+      const rows=coPerformances.map((p,i)=>[i+1,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
+
+      return `<details style="margin-bottom:6px;">
+        <summary style="font-weight:bold;font-size:1rem;color:#000;">${coMember}</summary>
+        <div style="margin:4px 0 2px 0;font-weight:bold;">演目別共演回数</div>
+        ${createTableHTML(['演目','回数'],coStageRows,'stage-table',['stage-column-20',''])}
+        <div style="margin:4px 0 2px 0;font-weight:bold;">共演履歴</div>
+        ${createTableHTML(['回数','日付','演目'],rows,'co-history-table',['','','stage-column-11'])}
+      </details>`;
+    }).join('');
 
     // 年別出演回数
     const yearCounts={};
@@ -250,58 +292,48 @@ function onMemberChange(){
         .map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
     });
 
-    // 共演ランキング
-    const coCounts={};
-    memberPastDesc.forEach(p=>p.members.forEach(m=>{
-      if(m!==member) coCounts[m]=(coCounts[m]||0)+1;
-    }));
-    const coRanking = sortRankingWithTies(Object.entries(coCounts).map(([name,count])=>({name,count})),combinedMembers)
-      .map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
-
-    // 共演履歴HTML
-    const coHistoryHtml = Object.keys(coCounts).sort((a,b)=>coCounts[b]-coCounts[a]).map(coMember=>{
-      const coPerformances=memberPastDesc.filter(p=>p.members.includes(coMember)).sort(sortByDateDescendingWithIndex);
-      const coStageMap={};
-      coPerformances.forEach(p=>{ const s=p.stage.replace(targetGroup,'').trim(); coStageMap[s]=(coStageMap[s]||0)+1; });
-      const coStageRows=Object.entries(coStageMap).sort((a,b)=>b[1]-a[1]).map(([s,c])=>[truncateStageNameLong(s),`${c}回`]);
-      const rows=coPerformances.map((p,i)=>[i+1,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
-
-      return `<details class="co-history" style="margin-bottom:6px;">
-        <summary class="table-header">${coMember}</summary>
-        <div style="margin:4px 0 2px 0; font-weight:bold;">演目別共演回数</div>
-        ${createTableHTML(['演目','回数'],coStageRows,'stage-table',['stage-column-20',''])}
-        <div style="margin:4px 0 2px 0; font-weight:bold;">共演履歴</div>
-        ${createTableHTML(['回数','日付','演目'],rows,'co-history-table',['','','stage-column-11'])}
-      </details>`;
-    }).join('');
-
-    // 出力HTML
     let html=`<div class="highlight">総出演回数：${totalCount}回</div>`;
+    if(remaining>0 && remaining<=10){
+      html+=`<div style="font-size:1rem;color:#000;margin-top:-8px;margin-bottom:2px;">${nextMilestone}回公演まであと${remaining}回</div>`;
+      if(milestoneFutureEvent){
+        const d=new Date(milestoneFutureEvent.date);
+        const dateStr=`${d.getMonth()+1}月${d.getDate()}日`;
+        html+=`<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">${dateStr}の ${truncateStageName(milestoneFutureEvent.stage.replace(targetGroup,'').trim())}公演 で達成予定</div>`;
+      }
+    }
 
-    // 出演履歴
-    const historyRows = memberPastDesc.map((p,i)=>[totalCount-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
-    html+=`<details open><summary>出演履歴</summary>${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}</details>`;
+    // 出演履歴トグルのみ
+    html+=`<details open style="margin-bottom:6px;font-size:0.95rem;">
+      <summary>出演履歴</summary>
+      ${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}
+    </details>`;
 
     // 今後の出演予定
-    const futureRows = memberFuture.map((p,i)=>[totalCount+i+1,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
-    if(futureRows.length>0) html+=`<div class="table-header">今後の出演予定</div>${createTableHTML(['回数','日付','演目'],futureRows,'future-table',['','','stage-column-11'])}`;
+    if(futureRows.length>0){
+      html+=`<div style="font-weight:bold;font-size:1.05rem;margin-top:0.5rem;">今後の出演予定</div>`;
+      html+=createTableHTML(['回数','日付','演目'],futureRows,'future-table',['','','stage-column-11']);
+    }
 
-    // 演目別出演回数
     html+=`<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'],stageRows,'stage-table',['stage-column-20',''])}`;
 
-    // 年別出演回数
+    // 演目別出演回数ランキング
+    const stageRanking = Object.entries(stageCountMap).sort((a,b)=>b[1]-a[1]).map(([s,c])=>[truncateStageNameLong(s),`${c}回`]);
+    html+=`<h3>演目別出演回数ランキング</h3>${createTableHTML(['演目','回数'],stageRanking,'stage-rank-table',['stage-column-20',''])}`;
+
     html+=`<h3>年別出演回数</h3>${createTableHTML(['年','回数'],yearRows,'year-table',['',''])}`;
 
-    // 年別出演回数ランキング
-    html+=`<h3 class="table-header">年別出演回数ランキング</h3>`;
+    // 年別ランキング
     Object.entries(yearRanking).sort((a,b)=>b[0].localeCompare(a[0])).forEach(([year,rows])=>{
-      html+=`<details><summary class="table-header">${year}年</summary>${createTableHTML(['順位','メンバー','回数'],rows,'year-rank-table',['','',''])}</details>`;
+      html+=`<details style="margin-bottom:4px;font-size:0.95rem;">
+        <summary>${year}年 出演回数ランキング</summary>
+        ${createTableHTML(['順位','メンバー','回数'],rows,'year-rank-table',['','',''])}
+      </details>`;
     });
 
     // 共演ランキング
     html+=`<h3>共演回数ランキング</h3>${createTableHTML(['順位','メンバー','回数'],coRanking,'co-rank-table',['','',''])}`;
 
-    // 各メンバーごとの共演情報
+    // 共演履歴
     html+=`<h3>共演履歴</h3>${coHistoryHtml}`;
 
     output.innerHTML=html;
