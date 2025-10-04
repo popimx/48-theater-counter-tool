@@ -252,11 +252,30 @@ function onMemberChange(){
     }));
     const coRanking = sortRankingWithTies(Object.entries(coCounts).map(([name,count])=>({name,count})),combinedMembers).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
 
-    const coHistoryHtml = coRanking.map(([rankStr,coMember,countStr])=>{
-      const count=parseInt(countStr);
-      const coPerformances=memberPastDesc.filter(p=>p.members.includes(coMember)).sort(sortByDateDescendingWithIndex);
-      const rows=coPerformances.map((p,i)=>[count-i,p.date,truncateStageName(p.stage.replace(targetGroup,'').trim())]);
-      return `<details><summary>${coMember}</summary>${createTableHTML(['回数','日付','演目'],rows,'co-history-table',['','','stage-column-11'])}</details>`;
+    // 共演履歴（演目別共演回数追加）
+    const coHistoryHtml = coRanking.map(([rankStr, coMember, countStr]) => {
+      const totalCount = parseInt(countStr);
+      const coPerformances = memberPastDesc.filter(p => p.members.includes(coMember)).sort(sortByDateDescendingWithIndex);
+
+      // 演目別共演回数
+      const coStageCountMap = {};
+      coPerformances.forEach(p => {
+        const stageName = p.stage.replace(targetGroup,'').trim();
+        coStageCountMap[stageName] = (coStageCountMap[stageName] || 0) + 1;
+      });
+      const coStageRows = Object.entries(coStageCountMap).sort((a,b) => b[1]-a[1]).map(([s,c]) => [truncateStageNameLong(s), `${c}回`]);
+
+      // 共演履歴
+      const coHistoryRows = coPerformances.map((p,i) => [totalCount-i, p.date, truncateStageName(p.stage.replace(targetGroup,'').trim())]);
+
+      return `<details>
+        <summary>${coMember}</summary>
+        <div><strong>共演回数: ${totalCount}回</strong></div>
+        <div><strong>演目別共演回数</strong></div>
+        ${createTableHTML(['演目','回数'], coStageRows, 'co-stage-table', ['stage-column-20',''])}
+        <div><strong>共演履歴</strong></div>
+        ${createTableHTML(['回数','日付','演目'], coHistoryRows, 'co-history-table',['','','stage-column-11'])}
+      </details>`;
     }).join('');
 
     // 年別出演回数（最新年が上）
@@ -282,43 +301,31 @@ function onMemberChange(){
       }
     }
 
+    // 指定順序で出力
     html+=`<h3>出演履歴</h3>${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}`;
     if(futureRows.length>0) html+=`<h3>今後の出演予定</h3>${createTableHTML(['回数','日付','演目'],futureRows,'history-table',['','','stage-column-11'])}`;
     if(sortedMilestones.length>0) html+=`<h3>節目達成日</h3>${createTableHTML(['節目','日付','演目'],sortedMilestones.map(m=>[m.milestone,m.date,m.stage]),'history-table',['','','stage-column-11'])}`;
-
-    // 演目別出演回数（固定幅）
-    html+=`<h3>演目別出演回数</h3>${createTableHTML(
-      ['演目','回数'],
-      stageRows,
-      'stage-table',
-      ['stage-column-20','']
-    )}`;
-
-    // 演目別出演回数ランキング（可変幅）
+    html+=`<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'],stageRows,'stage-table',['stage-column-20',''])}`;
     html+=`<h3>演目別出演回数ランキング</h3>${
-      Object.keys(stageCountMap)
-        .sort((a,b)=>stageCountMap[b]-stageCountMap[a])
+      Object.keys(stageCountMap).sort((a,b)=>stageCountMap[b]-stageCountMap[a])
         .map(stage=>`<details><summary>${stage}</summary>${createTableHTML(
           ['順位','名前','回数'],
           (function(){
             const counts={};
-            pastPerformances
-              .filter(p=>p.stage.replace(targetGroup,'').trim()===stage)
+            pastPerformances.filter(p=>p.stage.replace(targetGroup,'').trim()===stage)
               .forEach(p=>p.members.forEach(m=>counts[m]=(counts[m]||0)+1));
-            return sortRankingWithTies(
-              Object.entries(counts).map(([name,count])=>({name,count})),
-              combinedMembers
-            ).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
+            return sortRankingWithTies(Object.entries(counts).map(([name,count])=>({name,count})), combinedMembers)
+              .map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
           })()
         )}</details>`).join('')
     }`;
-
     html+=`<h3>年別出演回数</h3>${createTableHTML(['年','回数'],yearRows)}`;
     html+=`<h3>年別出演回数ランキング</h3>${
-      Object.entries(yearRanking).sort((a,b)=>b[0].localeCompare(a[0])).map(([year,ranks])=>`<details><summary>${year}年</summary>${createTableHTML(['順位','名前','回数'],ranks)}</details>`).join('')
+      Object.entries(yearRanking).sort((a,b)=>b[0].localeCompare(a[0]))
+        .map(([year,ranks])=>`<details><summary>${year}年</summary>${createTableHTML(['順位','名前','回数'],ranks)}</details>`).join('')
     }`;
     html+=`<h3>共演回数ランキング</h3>${createTableHTML(['順位','名前','回数'],coRanking)}`;
-    html+=`<h3>共演履歴</h3>${coHistoryHtml}`;
+    html+=`<h3>共演回数</h3>${coHistoryHtml}`;
 
     output.innerHTML = html;
   }
