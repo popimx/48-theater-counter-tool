@@ -39,6 +39,7 @@ function truncateStageName(stageName) {
   const specialCases = {
     '難波愛～今、小嶋が思うこと～': '難波愛～今、小嶋が思…',
     'きっと見つかる、KOIしてLOVEしてきゅんmart': 'きっと見つかる、KOI…',
+    '青春！恋のDestination': '青春！恋のDestination',
     '夢を死なせるわけにいかない': '夢を死なせるわけにい…',
     'ミネルヴァよ、風を起こせ': 'ミネルヴァよ、風を起…',
     'ヤバいよ！ついて来れんのか？！': 'ヤバいよ！ついて来れ…',
