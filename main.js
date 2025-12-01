@@ -47,7 +47,7 @@ function truncateStageName(stageName) {
     'その雫は、未来へと繋がる虹になる。': 'その雫は、未来へと繋…',
     'アップカミング公演〜THE END〜': 'アップカミング公演〜T…',
     "We're Growing Up〜2nd〜": "We're Growing Up〜…",
-    '一年後の僕たちはどんな恋をしているのだろう': '一年後の僕たちはどんな…'
+    '一年後の僕たちはどんな恋をしているのだろう': '一年後の僕たちはどんな…',
     'もっと！みんなで一緒にみくもんもん': 'もっと！みんなで一緒…'
   };
   if(specialCases[stageName]) return specialCases[stageName];
