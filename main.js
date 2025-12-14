@@ -202,8 +202,8 @@ function onMemberChange(){
   } else {
     processMemberData();
   }
-  
-    function processMemberData(){
+
+  function processMemberData(){
     const startDateStr = getSelectedDateString(startSelectors);
     const endDateStr = getSelectedDateString(endSelectors);
     const todayStr = getTodayString();
@@ -238,8 +238,18 @@ function onMemberChange(){
     }
     const sortedMilestones = milestones.sort((a,b)=>b.milestone-a.milestone);
 
-    const historyRows = memberPastDesc.map((p,i)=>[totalCount-i,p.date,`<span class="underline-stage">${truncateStageName(p.stage.replace(targetGroup,'').trim())}</span>`]);
-    const futureRows = (endDateStr===todayStr)?memberFuture.map((p,i)=>[totalCount+i+1,p.date,`<span class="underline-stage">${truncateStageName(p.stage.replace(targetGroup,'').trim())}</span>`]):[];
+    // --- 出演履歴テーブルに下線クリック対応 ---
+    const historyRows = memberPastDesc.map((p,i)=>{
+      const stageShort = truncateStageName(p.stage.replace(targetGroup,'').trim());
+      const stageSpan = `<span class="stage-link" style="text-decoration:underline;cursor:pointer;" data-date="${p.date}" data-stage="${p.stage}">${stageShort}</span>`;
+      return [totalCount-i,p.date,stageSpan];
+    });
+
+    const futureRows = (endDateStr===todayStr)?memberFuture.map((p,i)=>{
+      const stageShort = truncateStageName(p.stage.replace(targetGroup,'').trim());
+      const stageSpan = `<span class="stage-link" style="text-decoration:underline;cursor:pointer;" data-date="${p.date}" data-stage="${p.stage}">${stageShort}</span>`;
+      return [totalCount+i+1,p.date,stageSpan];
+    }):[];
 
     const stageCountMap={};
     memberPastDesc.forEach(p=>{
@@ -257,16 +267,20 @@ function onMemberChange(){
     const coHistoryHtml = coRanking.map(([rankStr,coMember,countStr])=>{
       const count=parseInt(countStr);
       const coPerformances=memberPastDesc.filter(p=>p.members.includes(coMember)).sort(sortByDateDescendingWithIndex);
-      const rows=coPerformances.map((p,i)=>[count-i,p.date,`<span class="underline-stage">${truncateStageName(p.stage.replace(targetGroup,'').trim())}</span>`]);
+      const rows=coPerformances.map((p,i)=>{
+        const stageShort = truncateStageName(p.stage.replace(targetGroup,'').trim());
+        const stageSpan = `<span class="stage-link" style="text-decoration:underline;cursor:pointer;" data-date="${p.date}" data-stage="${p.stage}">${stageShort}</span>`;
+        return [count-i,p.date,stageSpan];
+      });
       return `<details><summary>${coMember}</summary>${createTableHTML(['回数','日付','演目'],rows,'co-history-table',['','','stage-column-11'])}</details>`;
     }).join('');
 
-    // 年別出演回数（最新年が上）
+    // 年別出演回数
     const yearCounts={};
     memberPastDesc.forEach(p=>{ const y=p.date.slice(0,4); yearCounts[y]=(yearCounts[y]||0)+1; });
     const yearRows=Object.entries(yearCounts).sort((a,b)=>b[0].localeCompare(a[0])).map(([year,count])=>[`${year}年`,`${count}回`]);
 
-    // 年別出演回数ランキング（最新年が上）
+    // 年別出演回数ランキング
     const yearRanking={};
     Object.keys(yearCounts).forEach(year=>{
       const counts={};
@@ -274,43 +288,30 @@ function onMemberChange(){
       yearRanking[year]=sortRankingWithTies(Object.entries(counts).map(([name,count])=>({name,count})),combinedMembers).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
     });
 
+    // --- HTML生成 ---
     let html=`<div class="highlight">総出演回数：${totalCount}回</div>`;
     if(remaining>0 && remaining<=10){
       html+=`<div style="font-size:1rem;color:#000;margin-top:-8px;margin-bottom:2px;">${nextMilestone}回公演まであと${remaining}回</div>`;
       if(milestoneFutureEvent){
         const d=new Date(milestoneFutureEvent.date);
         const dateStr=`${d.getMonth()+1}月${d.getDate()}日`;
-        html+=`<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">${dateStr}の <span class="underline-stage">${truncateStageName(milestoneFutureEvent.stage.replace(targetGroup,'').trim())}</span>公演 で達成予定</div>`;
+        html+=`<div style="font-size:1rem;color:#000;margin-top:0;margin-bottom:8px;">${dateStr}の ${truncateStageName(milestoneFutureEvent.stage.replace(targetGroup,'').trim())}公演 で達成予定</div>`;
       }
     }
 
     html+=`<h3>出演履歴</h3>${createTableHTML(['回数','日付','演目'],historyRows,'history-table',['','','stage-column-11'])}`;
     if(futureRows.length>0) html+=`<h3>今後の出演予定</h3>${createTableHTML(['回数','日付','演目'],futureRows,'history-table',['','','stage-column-11'])}`;
-    if(sortedMilestones.length>0) html+=`<h3>節目達成日</h3>${createTableHTML(['節目','日付','演目'],sortedMilestones.map(m=>[m.milestone,m.date,`<span class="underline-stage">${m.stage}</span>`]),'history-table',['','','stage-column-11'])}`;
+    if(sortedMilestones.length>0) html+=`<h3>節目達成日</h3>${createTableHTML(['節目','日付','演目'],sortedMilestones.map(m=>[m.milestone,m.date,m.stage]),'history-table',['','','stage-column-11'])}`;
 
-    // 演目別出演回数（固定幅）
-    html+=`<h3>演目別出演回数</h3>${createTableHTML(
-      ['演目','回数'],
-      stageRows,
-      'stage-table',
-      ['stage-column-20','']
-    )}`;
+    html+=`<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'],stageRows,'stage-table',['stage-column-20',''])}`;
 
-    // 演目別出演回数ランキング（可変幅）
     html+=`<h3>演目別出演回数ランキング</h3>${
-      Object.keys(stageCountMap)
-        .sort((a,b)=>stageCountMap[b]-stageCountMap[a])
-        .map(stage=>`<details><summary>${stage}</summary>${createTableHTML(
-          ['順位','名前','回数'],
+      Object.keys(stageCountMap).sort((a,b)=>stageCountMap[b]-stageCountMap[a])
+        .map(stage=>`<details><summary>${stage}</summary>${createTableHTML(['順位','名前','回数'],
           (function(){
             const counts={};
-            pastPerformances
-              .filter(p=>p.stage.replace(targetGroup,'').trim()===stage)
-              .forEach(p=>p.members.forEach(m=>counts[m]=(counts[m]||0)+1));
-            return sortRankingWithTies(
-              Object.entries(counts).map(([name,count])=>({name,count})),
-              combinedMembers
-            ).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
+            pastPerformances.filter(p=>p.stage.replace(targetGroup,'').trim()===stage).forEach(p=>p.members.forEach(m=>counts[m]=(counts[m]||0)+1));
+            return sortRankingWithTies(Object.entries(counts).map(([name,count])=>({name,count})),combinedMembers).map(p=>[`${p.rank}位`,p.name,`${p.count}回`]);
           })()
         )}</details>`).join('')
     }`;
@@ -324,19 +325,21 @@ function onMemberChange(){
 
     output.innerHTML = html;
 
-    // 下線クリックで同じ演目のメンバーを表示
-    document.querySelectorAll('.underline-stage').forEach(el=>{
-      el.style.textDecoration='underline';
-      el.style.cursor='pointer';
-      el.onclick = ()=> {
-        const stageName = el.textContent.replace('…',''); // 簡易的に切り詰め解除
-        const stagePerformances = relevantPerformances.filter(p=>p.stage.includes(stageName));
-        const memberSet = new Set();
-        stagePerformances.forEach(p=>p.members.forEach(m=>memberSet.add(m)));
-        alert(`「${stageName}」出演メンバー:\n${[...memberSet].join('、')}`);
-      };
-    });
-
+    // --- 下線クリックイベントを追加 ---
+    setTimeout(()=>{
+      const links = output.querySelectorAll('.stage-link');
+      links.forEach(link=>{
+        link.addEventListener('click', ()=>{
+          const date = link.dataset.date;
+          const stage = link.dataset.stage;
+          const perf = pastPerformances.find(p=>p.date===date && p.stage===stage);
+          if(perf){
+            const membersFormatted = perf.members.join('・');
+            alert(`${date} の ${truncateStageName(stage.replace(targetGroup,''))} 出演メンバー：\n${membersFormatted}`);
+          }
+        });
+      });
+    },0);
   }
 }
 
