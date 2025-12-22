@@ -20,7 +20,8 @@
     "performance_akb48_2022.json",
     "performance_akb48_2023.json",
     "performance_akb48_2024.json",
-    "performance_akb48_2025.json"
+    "performance_akb48_2025.json",
+    "performance_akb48_2026.json"
   ],
   "SKE48": [
     "performance_ske48_2008.json",
@@ -40,7 +41,8 @@
     "performance_ske48_2022.json",
     "performance_ske48_2023.json",
     "performance_ske48_2024.json",
-    "performance_ske48_2025.json"
+    "performance_ske48_2025.json",
+    "performance_ske48_2026.json"
   ],
   "NMB48": [
     "performance_nmb48_2011.json",
@@ -57,7 +59,8 @@
     "performance_nmb48_2022.json",
     "performance_nmb48_2023.json",
     "performance_nmb48_2024.json",
-    "performance_nmb48_2025.json"
+    "performance_nmb48_2025.json",
+    "performance_nmb48_2026.json"
   ],
   "HKT48": [
     "performance_hkt48_2011.json",
@@ -74,7 +77,8 @@
     "performance_hkt48_2022.json",
     "performance_hkt48_2023.json",
     "performance_hkt48_2024.json",
-    "performance_hkt48_2025.json"
+    "performance_hkt48_2025.json",
+    "performance_hkt48_2026.json"
   ],
   "NGT48": [
     "performance_ngt48_2016.json",
@@ -86,7 +90,8 @@
     "performance_ngt48_2022.json",
     "performance_ngt48_2023.json",
     "performance_ngt48_2024.json",
-    "performance_ngt48_2025.json"
+    "performance_ngt48_2025.json",
+    "performance_ngt48_2026.json"
   ],
   "AKB48 卒業生": [
     "performance_akb48_2005.json",
@@ -109,7 +114,8 @@
     "performance_akb48_2022.json",
     "performance_akb48_2023.json",
     "performance_akb48_2024.json",
-    "performance_akb48_2025.json"
+    "performance_akb48_2025.json",
+    "performance_akb48_2026.json"
   ],
   "SKE48 卒業生": [
     "performance_ske48_2008.json",
@@ -129,7 +135,8 @@
     "performance_ske48_2022.json",
     "performance_ske48_2023.json",
     "performance_ske48_2024.json",
-    "performance_ske48_2025.json"
+    "performance_ske48_2025.json",
+    "performance_ske48_2026.json"
   ],
   "NMB48 卒業生": [
     "performance_nmb48_2011.json",
@@ -146,7 +153,8 @@
     "performance_nmb48_2022.json",
     "performance_nmb48_2023.json",
     "performance_nmb48_2024.json",
-    "performance_nmb48_2025.json"
+    "performance_nmb48_2025.json",
+    "performance_nmb48_2026.json"
   ],
   "HKT48 卒業生": [
     "performance_hkt48_2011.json",
@@ -163,7 +171,8 @@
     "performance_hkt48_2022.json",
     "performance_hkt48_2023.json",
     "performance_hkt48_2024.json",
-    "performance_hkt48_2025.json"
+    "performance_hkt48_2025.json",
+    "performance_hkt48_2026.json"
   ],
   "NGT48 卒業生": [
     "performance_ngt48_2016.json",
@@ -175,6 +184,7 @@
     "performance_ngt48_2022.json",
     "performance_ngt48_2023.json",
     "performance_ngt48_2024.json",
-    "performance_ngt48_2025.json"
+    "performance_ngt48_2025.json",
+    "performance_ngt48_2026.json"
   ]
 }
