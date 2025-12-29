@@ -48,7 +48,8 @@ function truncateStageName(stageName) {
     'アップカミング公演〜THE END〜': 'アップカミング公演〜T…',
     "We're Growing Up〜2nd〜": "We're Growing Up〜…",
     '一年後の僕たちはどんな恋をしているのだろう': '一年後の僕たちはどんな…',
-    'もっと！みんなで一緒にみくもんもん': 'もっと！みんなで一緒…'
+    'もっと！みんなで一緒にみくもんもん': 'もっと！みんなで一緒…',
+    '七つの海越え島越えいいゆめにおじゃましも！': '七つの海越え島越えいい…'
   };
   if(specialCases[stageName]) return specialCases[stageName];
 
