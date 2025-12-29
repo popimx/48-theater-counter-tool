@@ -431,3 +431,13 @@ function onMemberChange(){
     });
   }
 }
+
+window.addEventListener('DOMContentLoaded',async ()=>{
+  await fetchGroups();
+  await fetchPerformanceFiles();
+  setupGroupOptions();
+  groupSelect.addEventListener('change',onGroupChange);
+  memberSelect.addEventListener('change',onMemberChange);
+  Object.values(startSelectors).forEach(el=>el.addEventListener('change',()=>{ if(memberSelect.value) onMemberChange(); }));
+  Object.values(endSelectors).forEach(el=>el.addEventListener('change',()=>{ if(memberSelect.value) onMemberChange(); }));
+});
