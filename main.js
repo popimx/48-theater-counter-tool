@@ -49,6 +49,7 @@ function truncateStageName(stageName) {
     "We're Growing Up〜2nd〜": "We're Growing Up〜…",
     '一年後の僕たちはどんな恋をしているのだろう': '一年後の僕たちはどんな…',
     'もっと！みんなで一緒にみくもんもん': 'もっと！みんなで一緒…',
+    'ちっちゃいもんくらぶの放課後': 'ちっちゃいもんくらぶの…',
     '七つの海越え島越えいいゆめにおじゃましも！': '七つの海越え島越えいい…'
   };
   if(specialCases[stageName]) return specialCases[stageName];
