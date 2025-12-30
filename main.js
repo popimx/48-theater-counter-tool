@@ -391,26 +391,33 @@ function onMemberChange(){
     html+=`<h3>演目別出演回数</h3>${createTableHTML(['演目','回数'],stageRows,'stage-table',['stage-column-20',''])}`;
 
     html+=`<h3>演目別出演回数ランキング</h3>${
-      Object.keys(stageCountMap)
-        .sort((a,b)=>stageCountMap[b]-stageCountMap[a])
-        .map(stage=>`<details>
-          <summary>${stage}</summary>
-          ${createTableHTML(
-            ['順位','名前','回数'],
-            sortRankingWithTies(
-              Object.entries(
-                pastPerformances
-                  .filter(p=>p.stage.replace(targetGroup,'').trim()===stage)
-                  .reduce((o,p)=>{
-                    p.members.forEach(m=>o[m]=(o[m]||0)+1);
-                    return o;
-                  },{})
-              ).map(([name,count])=>({name,count})),
-              combinedMembers
-            ).map(p=>[`${p.rank}位`,p.name,`${p.count}回`])
-          )}
-        </details>`).join('')
-    }`;
+    Object.keys(stageCountMap)
+      .sort((a,b)=>{
+      // ① 出演回数が多い順
+      if(stageCountMap[b] !== stageCountMap[a]) {
+        return stageCountMap[b] - stageCountMap[a];
+      }
+      // ② 同回数なら初出演日が古い順
+      return stageFirstDateMap[a].localeCompare(stageFirstDateMap[b]);
+    })
+    .map(stage=>`<details>
+      <summary>${stage}</summary>
+      ${createTableHTML(
+        ['順位','名前','回数'],
+        sortRankingWithTies(
+          Object.entries(
+            pastPerformances
+              .filter(p=>p.stage.replace(targetGroup,'').trim()===stage)
+              .reduce((o,p)=>{
+                p.members.forEach(m=>o[m]=(o[m]||0)+1);
+                return o;
+              },{})
+          ).map(([name,count])=>({name,count})),
+          combinedMembers
+        ).map(p=>[`${p.rank}位`,p.name,`${p.count}回`])
+      )}
+    </details>`).join('')
+  }`;
 
     html+=`<h3>年別出演回数</h3>${createTableHTML(['年','回数'],yearRows)}`;
     html+=`<h3>年別出演回数ランキング</h3>${
