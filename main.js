@@ -53,7 +53,9 @@ function truncateStageName(stageName) {
     '七つの海越え島越えいいゆめにおじゃましも！': '七つの海越え島越えいい…',
     '山田の隣 (ここ) 空いてますよ': '山田の隣 (ここ) 空いて…',
     'ドラサンダイスキミンナオシテネ': 'ドラサンダイスキミンナ…',
-    'CloudyCloudyのくらくらこうえん': 'CloudyCloudyのくら…'
+    '6thシングルリリース記念特別公演': '6thシングルリリース記…',
+    'CloudyCloudyのくらくらこうえん': 'CloudyCloudyのくら…',
+    '1期生お披露目10周年特別公演': '1期生お披露目10周年特…'
     
   };
   if(specialCases[stageName]) return specialCases[stageName];
