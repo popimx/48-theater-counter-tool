@@ -93,6 +93,19 @@
     "performance_ngt48_2025.json",
     "performance_ngt48_2026.json"
   ],
+  "STU48": [
+    "performance_stu48_2017.json",
+    "performance_stu48_2018.json",
+    "performance_stu48_2019.json",
+    "performance_stu48_2020.json",
+    "performance_stu48_2021.json",
+    "performance_stu48_2022.json",
+    "performance_stu48_2023.json",
+    "performance_stu48_2024.json",
+    "performance_stu48_2025.json",
+    "performance_stu48_2026.json"
+  ],
+
   "AKB48 卒業生": [
     "performance_akb48_2005.json",
     "performance_akb48_2006.json",
@@ -186,5 +199,17 @@
     "performance_ngt48_2024.json",
     "performance_ngt48_2025.json",
     "performance_ngt48_2026.json"
+  ],
+  "STU48 卒業生": [
+    "performance_stu48_2017.json",
+    "performance_stu48_2018.json",
+    "performance_stu48_2019.json",
+    "performance_stu48_2020.json",
+    "performance_stu48_2021.json",
+    "performance_stu48_2022.json",
+    "performance_stu48_2023.json",
+    "performance_stu48_2024.json",
+    "performance_stu48_2025.json",
+    "performance_stu48_2026.json"
   ]
 }
